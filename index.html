@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Chess Puzzles</title>
+    <link rel="stylesheet" href="/src/ui/styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "chess.js": "/vendor/chess.js/dist/esm/chess.js",
+          "cm-chessboard": "/vendor/cm-chessboard/src/Chessboard.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <p id="status" class="status" aria-live="polite">Loading...</p>
+      <div id="board" class="board-stage"></div>
+      <div class="actions">
+        <button id="hint" type="button" aria-label="Hint">Hint</button>
+        <button id="skip" type="button" aria-label="Skip puzzle">Skip</button>
+      </div>
+    </main>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>
