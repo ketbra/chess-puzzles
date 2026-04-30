@@ -176,6 +176,26 @@ describe('promotion', () => {
   });
 });
 
+describe('API guards', () => {
+  it('attemptUserMove throws when called before setup', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    expect(() => s.attemptUserMove({ from: 'a1', to: 'a8' })).toThrow();
+  });
+
+  it('attemptUserMove throws when called after solved', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    s.attemptUserMove({ from: 'a1', to: 'a8' });
+    expect(() => s.attemptUserMove({ from: 'a8', to: 'a7' })).toThrow();
+  });
+
+  it('applyOpponentSetup throws if called twice', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    expect(() => s.applyOpponentSetup()).toThrow();
+  });
+});
+
 // Local helper used by multi-move tests.
 function parseUciFor(uci) {
   const from = uci.slice(0, 2);
