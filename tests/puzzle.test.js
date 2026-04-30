@@ -72,3 +72,33 @@ describe('attemptUserMove (mate-in-1 correct)', () => {
     expect(s.chess.isCheckmate()).toBe(true);
   });
 });
+
+describe('attemptUserMove (incorrect)', () => {
+  it('returns {result:incorrect} for a wrong move', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    const result = s.attemptUserMove({ from: 'g1', to: 'g2' });
+    expect(result.result).toBe('incorrect');
+  });
+
+  it('does not mutate state on incorrect', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    const fenBefore = s.fen();
+    const idxBefore = s.moveIndex;
+    const statusBefore = s.status;
+    s.attemptUserMove({ from: 'g1', to: 'g2' });
+    expect(s.fen()).toBe(fenBefore);
+    expect(s.moveIndex).toBe(idxBefore);
+    expect(s.status).toBe(statusBefore);
+  });
+
+  it('user can retry after an incorrect move', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    s.attemptUserMove({ from: 'g1', to: 'g2' });
+    const result = s.attemptUserMove({ from: 'a1', to: 'a8' });
+    expect(result.result).toBe('correct');
+    expect(result.solved).toBe(true);
+  });
+});
