@@ -102,3 +102,40 @@ describe('attemptUserMove (incorrect)', () => {
     expect(result.solved).toBe(true);
   });
 });
+
+describe('attemptUserMove (multi-move)', () => {
+  it('applies opponent reply and returns to awaiting-user', () => {
+    const s = new PuzzleSession(matein2Fixture);
+    s.applyOpponentSetup();
+    // moves: [opp, user, opp, user]; user's first move is moves[1].
+    const userMove1 = parseUciFor(matein2Fixture.moves[1]);
+    const r = s.attemptUserMove(userMove1);
+    expect(r.result).toBe('correct');
+    expect(r.solved).toBe(false);
+    expect(r.opponentReply).toBeTruthy();
+    // After opponent reply, status should be 'awaiting-user' again
+    // (we still have moves[3] for the user).
+    expect(s.status).toBe('awaiting-user');
+    expect(s.moveIndex).toBe(3);
+  });
+
+  it('completes the puzzle when user plays the final mate', () => {
+    const s = new PuzzleSession(matein2Fixture);
+    s.applyOpponentSetup();
+    s.attemptUserMove(parseUciFor(matein2Fixture.moves[1]));
+    const r = s.attemptUserMove(parseUciFor(matein2Fixture.moves[3]));
+    expect(r.result).toBe('correct');
+    expect(r.solved).toBe(true);
+    expect(s.status).toBe('solved');
+    expect(s.chess.isCheckmate()).toBe(true);
+  });
+});
+
+// Local helper used by multi-move tests.
+function parseUciFor(uci) {
+  const from = uci.slice(0, 2);
+  const to = uci.slice(2, 4);
+  const out = { from, to };
+  if (uci.length === 5) out.promotion = uci[4];
+  return out;
+}
