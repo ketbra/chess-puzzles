@@ -16,7 +16,6 @@ export class Board {
     this.root = root;
 
     this.cb = new Chessboard(root, {
-      position: 'empty',
       assetsUrl: ASSETS_URL,
       orientation: COLOR.white,
       style: {
