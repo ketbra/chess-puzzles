@@ -70,9 +70,10 @@ main {
 }
 
 .actions button {
-  min-width: 120px;
+  flex: 1;
+  min-width: 0;
   min-height: 48px;
-  padding: 12px 24px;
+  padding: 12px 16px;
   font-size: 18px;
   font-weight: 600;
   border-radius: 8px;

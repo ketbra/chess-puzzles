@@ -114,4 +114,37 @@ export class PuzzleSession {
     const expected = parseUci(this.puzzle.moves[this.moveIndex]);
     return { square: expected.from };
   }
+
+  // Plays the next canonical user move (and opponent reply if multi-move),
+  // bypassing the equality check in attemptUserMove. Used by the "Show"
+  // solution button. Returns the same shape as a 'correct' attemptUserMove.
+  playSolutionStep() {
+    if (this.status !== 'awaiting-user') {
+      throw new Error(`playSolutionStep called in status ${this.status}`);
+    }
+    const userMoveUci = this.puzzle.moves[this.moveIndex];
+    const applied = this.chess.move(parseUci(userMoveUci));
+    if (!applied) {
+      throw new Error(
+        `Solution user move ${userMoveUci} is illegal in puzzle ${this.puzzle.id}`,
+      );
+    }
+    this.moveIndex += 1;
+
+    if (this.moveIndex >= this.puzzle.moves.length) {
+      this.status = 'solved';
+      return { applied, solved: true };
+    }
+
+    const replyUci = this.puzzle.moves[this.moveIndex];
+    const opponentReply = this.chess.move(parseUci(replyUci));
+    if (!opponentReply) {
+      throw new Error(
+        `Opponent reply ${replyUci} is illegal in puzzle ${this.puzzle.id}`,
+      );
+    }
+    this.moveIndex += 1;
+    this.status = this.moveIndex >= this.puzzle.moves.length ? 'solved' : 'awaiting-user';
+    return { applied, opponentReply, solved: this.status === 'solved' };
+  }
 }

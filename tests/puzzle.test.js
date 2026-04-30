@@ -250,3 +250,44 @@ describe('attemptUserMove (alternative mate)', () => {
     expect(s.status).toBe('awaiting-user');
   });
 });
+
+describe('playSolutionStep', () => {
+  it('plays the user move and solves a mate-in-1', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    const r = s.playSolutionStep();
+    expect(r.solved).toBe(true);
+    expect(r.applied.from).toBe('a1');
+    expect(r.applied.to).toBe('a8');
+    expect(s.status).toBe('solved');
+    expect(s.chess.isCheckmate()).toBe(true);
+  });
+
+  it('plays user move and opponent reply on multi-move, returning to awaiting-user', () => {
+    const s = new PuzzleSession(matein2Fixture);
+    s.applyOpponentSetup();
+    const r = s.playSolutionStep();
+    expect(r.solved).toBe(false);
+    expect(r.opponentReply).toBeTruthy();
+    expect(s.status).toBe('awaiting-user');
+    expect(s.moveIndex).toBe(3);
+  });
+
+  it('completes a multi-move puzzle when called repeatedly', () => {
+    const s = new PuzzleSession(matein2Fixture);
+    s.applyOpponentSetup();
+    s.playSolutionStep();
+    const r = s.playSolutionStep();
+    expect(r.solved).toBe(true);
+    expect(s.status).toBe('solved');
+    expect(s.chess.isCheckmate()).toBe(true);
+  });
+
+  it('throws when called outside awaiting-user', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    expect(() => s.playSolutionStep()).toThrow(); // before setup
+    s.applyOpponentSetup();
+    s.playSolutionStep();
+    expect(() => s.playSolutionStep()).toThrow(); // after solved
+  });
+});
