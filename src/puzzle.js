@@ -39,4 +39,45 @@ export class PuzzleSession {
     this.status = this.puzzle.moves.length > 1 ? 'awaiting-user' : 'solved';
     return move;
   }
+
+  attemptUserMove({ from, to, promotion }) {
+    if (this.status !== 'awaiting-user') {
+      throw new Error(`attemptUserMove called in status ${this.status}`);
+    }
+    const submitted = formatMove({ from, to, promotion });
+    const expectedUci = this.puzzle.moves[this.moveIndex];
+    if (submitted !== expectedUci) {
+      return { result: 'incorrect' };
+    }
+    const expected = parseUci(expectedUci);
+    const applied = this.chess.move(expected);
+    if (!applied) {
+      throw new Error(
+        `Expected user move ${expectedUci} is illegal in puzzle ${this.puzzle.id}`,
+      );
+    }
+    this.moveIndex += 1;
+
+    if (this.moveIndex >= this.puzzle.moves.length) {
+      this.status = 'solved';
+      return { result: 'correct', applied, solved: true };
+    }
+
+    // Multi-move puzzle: play opponent's reply at moves[moveIndex].
+    const reply = parseUci(this.puzzle.moves[this.moveIndex]);
+    const opponentReply = this.chess.move(reply);
+    if (!opponentReply) {
+      throw new Error(
+        `Opponent reply ${this.puzzle.moves[this.moveIndex]} is illegal in puzzle ${this.puzzle.id}`,
+      );
+    }
+    this.moveIndex += 1;
+    this.status = this.moveIndex >= this.puzzle.moves.length ? 'solved' : 'awaiting-user';
+    return {
+      result: 'correct',
+      applied,
+      solved: this.status === 'solved',
+      opponentReply,
+    };
+  }
 }

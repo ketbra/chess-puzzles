@@ -54,3 +54,21 @@ describe('applyOpponentSetup', () => {
     expect(() => s.applyOpponentSetup()).toThrow();
   });
 });
+
+describe('attemptUserMove (mate-in-1 correct)', () => {
+  it('returns {result:correct, solved:true} when user plays the mate', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    const result = s.attemptUserMove({ from: 'a1', to: 'a8' });
+    expect(result.result).toBe('correct');
+    expect(result.solved).toBe(true);
+    expect(s.status).toBe('solved');
+  });
+
+  it('the chess instance reflects the mate', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    s.attemptUserMove({ from: 'a1', to: 'a8' });
+    expect(s.chess.isCheckmate()).toBe(true);
+  });
+});
