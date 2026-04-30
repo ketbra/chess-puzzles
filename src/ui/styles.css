@@ -51,12 +51,14 @@ main {
   filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.5));
 }
 
-/* Warm board theme. cm-chessboard exposes CSS custom properties for
-   square colors; the exact variable names depend on cm-chessboard's
-   stylesheet. Override here. */
-.board-stage {
-  --light-square: #f0d9b5; /* warm cream */
-  --dark-square: #7a4a2b;  /* walnut */
+/* Warm board theme. cm-chessboard styles squares via SVG fill rules
+   on .cm-chessboard.default .board .square.white/.black — override
+   with higher specificity than its default cream/brown. */
+.board-stage .cm-chessboard.default .board .square.white {
+  fill: #f0d9b5; /* warm cream */
+}
+.board-stage .cm-chessboard.default .board .square.black {
+  fill: #7a4a2b; /* walnut */
 }
 
 /* Action buttons */
