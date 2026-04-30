@@ -204,3 +204,49 @@ function parseUciFor(uci) {
   if (uci.length === 5) out.promotion = uci[4];
   return out;
 }
+
+describe('attemptUserMove (alternative mate)', () => {
+  // Synthetic puzzle with TWO valid mate-in-1 moves:
+  //   White Kg2, Qd1, Ra1. Black Kg8, pawns f7/g7/h7, knight on b6.
+  //   After black's setup (Nb6-c4 — moves out of the way of both mate lines),
+  //   white has TWO mates:
+  //     canonical: Qd1-d8#
+  //     alternative: Ra1-a8#
+  //   PuzzleSession should accept either, since rejecting a valid mate is
+  //   bad UX for a kid learner.
+  const altMatesPuzzle = {
+    id: 'TEST_ALT_MATES',
+    fen: '6k1/5ppp/1n6/8/8/8/6K1/R2Q4 b - - 0 1',
+    moves: ['b6c4', 'd1d8'], // canonical: Qd8#
+    rating: 1000,
+    themes: ['mateIn1'],
+    stars: 2,
+  };
+
+  it('accepts the canonical mate', () => {
+    const s = new PuzzleSession(altMatesPuzzle);
+    s.applyOpponentSetup();
+    const r = s.attemptUserMove({ from: 'd1', to: 'd8' });
+    expect(r.result).toBe('correct');
+    expect(r.solved).toBe(true);
+  });
+
+  it('accepts an alternative mate (Ra8#) on the final user move', () => {
+    const s = new PuzzleSession(altMatesPuzzle);
+    s.applyOpponentSetup();
+    const r = s.attemptUserMove({ from: 'a1', to: 'a8' });
+    expect(r.result).toBe('correct');
+    expect(r.solved).toBe(true);
+    expect(s.chess.isCheckmate()).toBe(true);
+  });
+
+  it('rejects a legal-but-non-mating move and leaves state unchanged', () => {
+    const s = new PuzzleSession(altMatesPuzzle);
+    s.applyOpponentSetup();
+    const fenBefore = s.fen();
+    const r = s.attemptUserMove({ from: 'g2', to: 'g3' }); // legal king move, not mate
+    expect(r.result).toBe('incorrect');
+    expect(s.fen()).toBe(fenBefore);
+    expect(s.status).toBe('awaiting-user');
+  });
+});

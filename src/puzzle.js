@@ -46,39 +46,68 @@ export class PuzzleSession {
     }
     const submitted = formatMove({ from, to, promotion });
     const expectedUci = this.puzzle.moves[this.moveIndex];
-    if (submitted !== expectedUci) {
+    const isFinalUserMove = this.moveIndex === this.puzzle.moves.length - 1;
+
+    // Path 1: exact match with the puzzle's intended line.
+    if (submitted === expectedUci) {
+      const expected = parseUci(expectedUci);
+      const applied = this.chess.move(expected);
+      if (!applied) {
+        throw new Error(
+          `Expected user move ${expectedUci} is illegal in puzzle ${this.puzzle.id}`,
+        );
+      }
+      this.moveIndex += 1;
+
+      if (this.moveIndex >= this.puzzle.moves.length) {
+        this.status = 'solved';
+        return { result: 'correct', applied, solved: true };
+      }
+
+      // Multi-move puzzle: play opponent's reply at moves[moveIndex].
+      const reply = parseUci(this.puzzle.moves[this.moveIndex]);
+      const opponentReply = this.chess.move(reply);
+      if (!opponentReply) {
+        throw new Error(
+          `Opponent reply ${this.puzzle.moves[this.moveIndex]} is illegal in puzzle ${this.puzzle.id}`,
+        );
+      }
+      this.moveIndex += 1;
+      this.status = this.moveIndex >= this.puzzle.moves.length ? 'solved' : 'awaiting-user';
+      return {
+        result: 'correct',
+        applied,
+        solved: this.status === 'solved',
+        opponentReply,
+      };
+    }
+
+    // Path 2: not the canonical line. On the FINAL user move, accept any
+    // legal move that delivers checkmate (mate-in-1 positions often have
+    // multiple mating moves; rejecting them is bad UX for a kid learner).
+    // For non-final user moves in multi-move puzzles, the canonical line
+    // must be followed exactly because the rest of the sequence depends on it.
+    if (isFinalUserMove) {
+      let applied;
+      try {
+        applied = this.chess.move({ from, to, promotion });
+      } catch {
+        return { result: 'incorrect' };
+      }
+      if (!applied) return { result: 'incorrect' };
+
+      if (this.chess.isCheckmate()) {
+        this.moveIndex += 1;
+        this.status = 'solved';
+        return { result: 'correct', applied, solved: true };
+      }
+
+      // Legal but doesn't mate — undo and reject.
+      this.chess.undo();
       return { result: 'incorrect' };
     }
-    const expected = parseUci(expectedUci);
-    const applied = this.chess.move(expected);
-    if (!applied) {
-      throw new Error(
-        `Expected user move ${expectedUci} is illegal in puzzle ${this.puzzle.id}`,
-      );
-    }
-    this.moveIndex += 1;
 
-    if (this.moveIndex >= this.puzzle.moves.length) {
-      this.status = 'solved';
-      return { result: 'correct', applied, solved: true };
-    }
-
-    // Multi-move puzzle: play opponent's reply at moves[moveIndex].
-    const reply = parseUci(this.puzzle.moves[this.moveIndex]);
-    const opponentReply = this.chess.move(reply);
-    if (!opponentReply) {
-      throw new Error(
-        `Opponent reply ${this.puzzle.moves[this.moveIndex]} is illegal in puzzle ${this.puzzle.id}`,
-      );
-    }
-    this.moveIndex += 1;
-    this.status = this.moveIndex >= this.puzzle.moves.length ? 'solved' : 'awaiting-user';
-    return {
-      result: 'correct',
-      applied,
-      solved: this.status === 'solved',
-      opponentReply,
-    };
+    return { result: 'incorrect' };
   }
 
   hint() {
