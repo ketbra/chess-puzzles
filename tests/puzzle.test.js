@@ -157,6 +157,25 @@ describe('hint', () => {
   });
 });
 
+describe('promotion', () => {
+  it('accepts queen promotion when expected move is queen promotion', () => {
+    const s = new PuzzleSession(promotionFixture);
+    s.applyOpponentSetup();
+    const r = s.attemptUserMove({ from: 'a7', to: 'a8', promotion: 'q' });
+    expect(r.result).toBe('correct');
+    expect(r.solved).toBe(true);
+  });
+
+  it('rejects knight promotion when expected move is queen promotion', () => {
+    const s = new PuzzleSession(promotionFixture);
+    s.applyOpponentSetup();
+    const r = s.attemptUserMove({ from: 'a7', to: 'a8', promotion: 'n' });
+    expect(r.result).toBe('incorrect');
+    // State unchanged: still awaiting user.
+    expect(s.status).toBe('awaiting-user');
+  });
+});
+
 // Local helper used by multi-move tests.
 function parseUciFor(uci) {
   const from = uci.slice(0, 2);
