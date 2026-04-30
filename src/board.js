@@ -73,7 +73,9 @@ export class Board {
       const from = event.squareFrom;
       const to = event.squareTo;
       if (from && to && event.legalMove) {
-        this.onUserMove({ from, to, promotion: 'q' });
+        const move = { from, to };
+        if (event.promotion) move.promotion = event.promotion;
+        this.onUserMove(move);
       }
     }
     return undefined;
