@@ -3,7 +3,6 @@
 // Idempotent. Re-run after `npm install` or `npm update`.
 
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,23 +14,31 @@ async function readPackageEntry(pkgName) {
   const pkgJson = JSON.parse(
     await readFile(join(repoRoot, 'node_modules', pkgName, 'package.json'), 'utf8'),
   );
-  // Prefer ESM via "exports" → "import", then "module", then "main"
+  // Prefer ESM via "exports" → "import" → "default", then "module", then "main".
+  let entry = null;
   const exp = pkgJson.exports;
-  if (typeof exp === 'string') return exp;
-  if (exp && typeof exp === 'object') {
+  if (typeof exp === 'string') {
+    entry = exp;
+  } else if (exp && typeof exp === 'object') {
     const root = exp['.'] ?? exp;
-    if (typeof root === 'string') return root;
-    if (root && typeof root === 'object') {
-      return root.import ?? root.default ?? root.module ?? null;
+    if (typeof root === 'string') {
+      entry = root;
+    } else if (root && typeof root === 'object') {
+      const candidate = root.import ?? root.default ?? root.module;
+      if (typeof candidate === 'string') entry = candidate;
     }
   }
-  return pkgJson.module ?? pkgJson.main ?? null;
+  if (entry == null) entry = pkgJson.module ?? pkgJson.main ?? null;
+  if (typeof entry !== 'string' || entry.length === 0) {
+    throw new Error(`Could not resolve ESM entry for ${pkgName}; inspect its package.json`);
+  }
+  return entry.replace(/^\.\//, '');
 }
 
 async function vendorPackage(pkgName) {
   const src = join(repoRoot, 'node_modules', pkgName);
   const dst = join(vendorRoot, pkgName);
-  if (existsSync(dst)) await rm(dst, { recursive: true, force: true });
+  await rm(dst, { recursive: true, force: true });
   await mkdir(dst, { recursive: true });
   // Copy the entire package directory; we'll let GitHub Pages serve only what's referenced.
   // This is simpler than cherry-picking files and avoids missing assets.
@@ -40,7 +47,7 @@ async function vendorPackage(pkgName) {
     filter: (file) => !file.endsWith('node_modules'),
   });
   const entry = await readPackageEntry(pkgName);
-  console.log(`  ${pkgName}: entry = ${entry ?? '(unknown — check manually)'}`);
+  console.log(`  ${pkgName}: entry = ${entry}`);
   return entry;
 }
 
@@ -49,8 +56,8 @@ const chessEntry = await vendorPackage('chess.js');
 const boardEntry = await vendorPackage('cm-chessboard');
 
 const importMapHint = {
-  'chess.js': `/vendor/chess.js/${chessEntry ?? '<entry>'}`,
-  'cm-chessboard': `/vendor/cm-chessboard/${boardEntry ?? '<entry>'}`,
+  'chess.js': `/vendor/chess.js/${chessEntry}`,
+  'cm-chessboard': `/vendor/cm-chessboard/${boardEntry}`,
 };
 console.log('\nImport map paths to use in index.html:');
 console.log(JSON.stringify({ imports: importMapHint }, null, 2));
