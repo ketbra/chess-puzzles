@@ -27,3 +27,30 @@ describe('PuzzleSession construction', () => {
     expect(s.orientation()).toBe('white');
   });
 });
+
+describe('applyOpponentSetup', () => {
+  it('plays moves[0], advances moveIndex to 1, sets status to awaiting-user', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    const move = s.applyOpponentSetup();
+    expect(move.from).toBe('c6');
+    expect(move.to).toBe('e5');
+    expect(s.moveIndex).toBe(1);
+    expect(s.status).toBe('awaiting-user');
+  });
+
+  it('the chess instance reflects the opponent setup move', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    // Knight moved c6 -> e5; FEN should show 'n' on board, no 'n' on c6.
+    const fen = s.fen();
+    expect(fen).toMatch(/n/); // sanity: knight still on board
+    // After the move, side-to-move flips to white (the user).
+    expect(s.turn()).toBe('w');
+  });
+
+  it('throws if called twice', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    expect(() => s.applyOpponentSetup()).toThrow();
+  });
+});
