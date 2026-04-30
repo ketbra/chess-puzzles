@@ -20,3 +20,20 @@ export function parseUci(uci) {
   }
   return result;
 }
+
+export function formatMove({ from, to, promotion }) {
+  if (typeof from !== 'string' || typeof to !== 'string') {
+    throw new Error(`Invalid move: ${JSON.stringify({ from, to, promotion })}`);
+  }
+  if (!SQUARE.test(from) || !SQUARE.test(to)) {
+    throw new Error(`Invalid move squares: ${from}-${to}`);
+  }
+  let uci = from + to;
+  if (promotion != null) {
+    if (!PROMO.test(promotion)) {
+      throw new Error(`Invalid promotion: ${promotion}`);
+    }
+    uci += promotion;
+  }
+  return uci;
+}
