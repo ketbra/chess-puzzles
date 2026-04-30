@@ -80,4 +80,9 @@ export class PuzzleSession {
       opponentReply,
     };
   }
+
+  hint() {
+    const expected = parseUci(this.puzzle.moves[this.moveIndex]);
+    return { square: expected.from };
+  }
 }

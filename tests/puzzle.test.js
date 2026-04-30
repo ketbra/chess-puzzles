@@ -131,6 +131,32 @@ describe('attemptUserMove (multi-move)', () => {
   });
 });
 
+describe('hint', () => {
+  it('returns the source square of the next user move', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    expect(s.hint()).toEqual({ square: 'a1' });
+  });
+
+  it('does not mutate state', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    const idxBefore = s.moveIndex;
+    s.hint();
+    expect(s.moveIndex).toBe(idxBefore);
+  });
+
+  it('returns the next user move source after partial multi-move progress', () => {
+    const s = new PuzzleSession(matein2Fixture);
+    s.applyOpponentSetup();
+    s.attemptUserMove({
+      from: matein2Fixture.moves[1].slice(0, 2),
+      to: matein2Fixture.moves[1].slice(2, 4),
+    });
+    expect(s.hint().square).toBe(matein2Fixture.moves[3].slice(0, 2));
+  });
+});
+
 // Local helper used by multi-move tests.
 function parseUciFor(uci) {
   const from = uci.slice(0, 2);
