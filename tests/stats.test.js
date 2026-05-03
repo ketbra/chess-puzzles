@@ -114,4 +114,23 @@ describe('Stats', () => {
     expect(s2.snapshot().today).toBe(1);
     await store2.close();
   });
+
+  it('reset() zeros all stats and clears the puzzle error flag', async () => {
+    const { stats } = await freshStatsStore();
+    // Build up some state.
+    for (let i = 0; i < 3; i++) {
+      stats.startPuzzle();
+      await stats.onCorrectSolve();
+    }
+    stats.startPuzzle();
+    await stats.onWrongMove();
+    expect(stats.snapshot().solved).toBe(3);
+    expect(stats.snapshot().bestStreak).toBe(3);
+    expect(stats.puzzleHadError).toBe(true);
+
+    await stats.reset();
+
+    expect(stats.snapshot()).toMatchObject({ solved: 0, streak: 0, bestStreak: 0, today: 0 });
+    expect(stats.puzzleHadError).toBe(false);
+  });
 });

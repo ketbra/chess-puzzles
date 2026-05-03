@@ -83,6 +83,16 @@ export class Stats {
       today:      this.todayCount,
     };
   }
+
+  async reset() {
+    this.solved = 0;
+    this.streak = 0;
+    this.bestStreak = 0;
+    this.todayCount = 0;
+    this.todayDate = todayKey();
+    this.puzzleHadError = false;
+    await this.persist();
+  }
 }
 
 function todayKey() {
