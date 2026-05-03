@@ -103,7 +103,11 @@ async function fetchJsonWithTimeout(fetchFn, url, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetchFn(url, { signal: controller.signal });
+    // cache: 'no-cache' forces revalidation against the server so a stale
+    // browser-cached manifest can't keep us serving outdated theme lists.
+    // The theme files themselves are content-addressed via sha256, so caching
+    // them is fine.
+    const res = await fetchFn(url, { signal: controller.signal, cache: 'no-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } finally {
