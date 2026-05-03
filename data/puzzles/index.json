@@ -1,12 +1,36 @@
 {
   "version": "2026-05-03",
-  "generatedAt": "2026-05-03T13:59:24.442Z",
+  "generatedAt": "2026-05-03T15:25:55.673Z",
   "themes": [
     {
       "name": "mateIn1",
       "file": "mateIn1.json",
       "count": 2000,
       "sha256": "091ff7a83bf31483c925bf383ec859adc47097c7bfcb25c10ca13973b6532225"
+    },
+    {
+      "name": "mateIn2",
+      "file": "mateIn2.json",
+      "count": 2000,
+      "sha256": "f8d77d4054e84da2fee48cc57feb45a5c27ba5b8292514228f0c95b1ec01f37b"
+    },
+    {
+      "name": "fork",
+      "file": "fork.json",
+      "count": 2000,
+      "sha256": "ad9b20d0d40119812ed2f63c8ea5816d1baf5c2aa0121249c1c1805f6331b24f"
+    },
+    {
+      "name": "pin",
+      "file": "pin.json",
+      "count": 2000,
+      "sha256": "841a4a210a7f85074d8bbc00d9fb2fa7ebfa1840f81ce0ab6f7137d293ee7a7a"
+    },
+    {
+      "name": "hangingPiece",
+      "file": "hangingPiece.json",
+      "count": 2000,
+      "sha256": "27ba8b0aaea6ad4caf0be8a2d384de9eb9b2216a1dc5412f50817d4b37e8e9ff"
     }
   ]
 }
