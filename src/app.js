@@ -1,16 +1,17 @@
 // src/app.js
-// Phase 1 entry point. Owns the puzzle queue, current PuzzleSession,
-// timing, and Hint/Skip wiring.
+// Phase 2 entry point. Loads puzzles from IndexedDB (fetched once on first
+// run); orchestrates the puzzle queue, timing, and Hint/Show/Skip wiring.
 
 import { PuzzleSession } from './puzzle.js';
 import { Board } from './board.js';
-import { phase1Puzzles } from './puzzles-phase1.js';
+import { loadPuzzles } from './loader.js';
 import { flashCorrect, shakeIncorrect, setStatus } from './ui/feedback.js';
+import { setProgress, hideProgress } from './ui/progress.js';
 
 const SETUP_DELAY_MS = 600;
 const OPPONENT_REPLY_DELAY_MS = 400;
 const POST_SOLVE_PAUSE_MS = 800;
-const POST_SHOW_PAUSE_MS = 1500; // longer after Show so the kid can study the mate
+const POST_SHOW_PAUSE_MS = 1500;
 
 function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -19,9 +20,10 @@ function wait(ms) {
 let queueIndex = 0;
 let session = null;
 let board = null;
+let puzzles = [];
 
 async function loadNextPuzzle() {
-  const puzzle = phase1Puzzles[queueIndex % phase1Puzzles.length];
+  const puzzle = puzzles[queueIndex % puzzles.length];
   queueIndex += 1;
   session = new PuzzleSession(puzzle);
 
@@ -35,20 +37,17 @@ async function loadNextPuzzle() {
 }
 
 async function handleUserMove({ from, to, promotion }) {
-  if (!session || session.status !== 'awaiting-user') {
-    return; // ignore input during pauses / animations
-  }
+  if (!session || session.status !== 'awaiting-user') return;
   const r = session.attemptUserMove({ from, to, promotion });
   if (r.result === 'incorrect') {
     setStatus('Try again.');
     await Promise.all([
       shakeIncorrect(board.element),
-      board.setPosition(session.fen()), // visually revert
+      board.setPosition(session.fen()),
     ]);
     return;
   }
 
-  // Correct.
   await flashCorrect(board.squareElement(to));
 
   if (r.solved) {
@@ -58,7 +57,6 @@ async function handleUserMove({ from, to, promotion }) {
     return;
   }
 
-  // Multi-move continuation.
   await wait(OPPONENT_REPLY_DELAY_MS);
   await board.animateMove({ from: r.opponentReply.from, to: r.opponentReply.to });
   setStatus('Find the next best move.');
@@ -67,7 +65,7 @@ async function handleUserMove({ from, to, promotion }) {
 async function handleShowSolution() {
   if (!session || session.status !== 'awaiting-user') return;
   const r = session.playSolutionStep();
-  setStatus('Here’s the next move.');
+  setStatus('Here\'s the next move.');
   await board.animateMove({ from: r.applied.from, to: r.applied.to });
 
   if (r.opponentReply) {
@@ -99,8 +97,22 @@ function bindActions() {
 }
 
 async function main() {
+  setStatus('Loading puzzles…');
   board = new Board('#board', { onUserMove: handleUserMove });
   bindActions();
+
+  try {
+    puzzles = await loadPuzzles('mateIn1', {
+      onProgress: (loaded, total) => setProgress(loaded, total),
+    });
+  } catch (err) {
+    console.error(err);
+    setStatus('Need internet on first run. Reload when online.');
+    hideProgress();
+    return;
+  }
+
+  hideProgress();
   await loadNextPuzzle();
 }
 
