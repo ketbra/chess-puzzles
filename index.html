@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="/vendor/cm-chessboard/assets/chessboard.css" />
     <link rel="stylesheet" href="/vendor/cm-chessboard/assets/extensions/markers/markers.css" />
     <link rel="stylesheet" href="/src/ui/styles.css" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#7a4a2b" />
     <script type="importmap">
       {
         "imports": {
@@ -19,6 +21,7 @@
     </script>
   </head>
   <body>
+    <button id="install-btn" type="button" class="install-btn" hidden>Install app</button>
     <main>
       <div id="stats-header" class="stats-header"></div>
       <div id="theme-chips" class="theme-chips"></div>

@@ -190,3 +190,25 @@ main {
 
 .star-on  { color: #f0d9b5; }
 .star-off { color: #5a3a22; opacity: 0.4; }
+
+/* Install button — fixed top-right, only visible when bindInstall shows it. */
+.install-btn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 100;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 14px;
+  border-radius: 999px;
+  border: 2px solid #5a3a22;
+  background: #f0d9b5;
+  color: #2a201a;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.install-btn:hover {
+  background: #ecdab9;
+}
