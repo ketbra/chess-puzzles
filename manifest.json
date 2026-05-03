@@ -1,6 +1,6 @@
 {
   "name": "Chess Puzzles",
-  "short_name": "Puzzles",
+  "short_name": "Chess Puzzles",
   "description": "Mate-in-1 chess puzzles for kids",
   "start_url": "./",
   "scope": "./",

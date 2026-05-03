@@ -15,7 +15,7 @@ describe('manifest.json', () => {
   it('has all required PWA fields', () => {
     const m = JSON.parse(readFileSync(resolve(REPO_ROOT, 'manifest.json'), 'utf8'));
     expect(m.name).toBe('Chess Puzzles');
-    expect(m.short_name).toBe('Puzzles');
+    expect(m.short_name).toBe('Chess Puzzles');
     expect(m.start_url).toBe('./');
     expect(m.scope).toBe('./');
     expect(m.display).toBe('standalone');
