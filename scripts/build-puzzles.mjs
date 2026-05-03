@@ -111,7 +111,7 @@ export function verifyPuzzle(row, themeName = 'mateIn1', rules = THEME_RULES) {
 
 // ───────── Orchestration ─────────
 
-import { mkdir, readFile, writeFile, stat, appendFile, rm } from 'node:fs/promises';
+import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { existsSync, createReadStream, createWriteStream } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
@@ -126,8 +126,6 @@ const ZST_PATH = join(CACHE_DIR, 'lichess_puzzles.csv.zst');
 const CSV_PATH = join(CACHE_DIR, 'lichess_puzzles.csv');
 const DATA_DIR = join(REPO_ROOT, 'data', 'puzzles');
 const URL = 'https://database.lichess.org/lichess_db_puzzle.csv.zst';
-const CAP = 2000;
-const FLOOR = 500;
 
 async function downloadIfNeeded({ refresh }) {
   await mkdir(CACHE_DIR, { recursive: true });
@@ -171,12 +169,14 @@ async function decompressIfNeeded() {
 
 async function streamFilterVerify() {
   const rejected = [];
-  const candidates = [];
+  // One bucket per theme.
+  const buckets = Object.fromEntries(THEME_NAMES.map((n) => [n, []]));
   const stats = {
     rowsScanned: 0,
-    keptAfterFilter: 0,
-    keptAfterVerify: 0,
-    rejections: {},
+    perTheme: Object.fromEntries(THEME_NAMES.map((n) => [n, {
+      keptAfterFilter: 0, keptAfterVerify: 0, rejections: {},
+    }])),
+    globalRejections: {},
   };
 
   const stream = createReadStream(CSV_PATH, { encoding: 'utf8' });
@@ -192,47 +192,56 @@ async function streamFilterVerify() {
     try {
       row = parseLichessRow(line);
     } catch {
-      // Genuinely malformed line — count as rejection.
-      bumpRejection(stats, 'malformed-row');
-      rejected.push({ id: '?', reason: 'malformed-row', detail: line.slice(0, 80) });
+      stats.globalRejections['malformed-row'] = (stats.globalRejections['malformed-row'] || 0) + 1;
+      rejected.push({ id: '?', theme: '-', reason: 'malformed-row', detail: line.slice(0, 80) });
       continue;
     }
 
-    if (!passesFilter(row)) {
-      const reason = !row.themes.includes('mateIn1') ? 'non-mateIn1-theme'
-        : row.rating > 1200 ? 'rating-too-high'
-        : 'wrong-move-count';
-      bumpRejection(stats, reason);
-      rejected.push({ id: row.id, reason });
-      continue;
+    let qualifiedForAny = false;
+    for (const theme of THEME_NAMES) {
+      if (!passesFilter(row, theme)) continue;
+      qualifiedForAny = true;
+      stats.perTheme[theme].keptAfterFilter++;
+      const v = verifyPuzzle(row, theme);
+      if (!v.ok) {
+        bumpThemeRejection(stats, theme, v.reason);
+        rejected.push({ id: row.id, theme, reason: v.reason, detail: v.detail });
+        continue;
+      }
+      stats.perTheme[theme].keptAfterVerify++;
+      buckets[theme].push(row);
     }
-    stats.keptAfterFilter++;
-
-    const v = verifyPuzzle(row);
-    if (!v.ok) {
-      bumpRejection(stats, v.reason);
-      rejected.push({ id: row.id, reason: v.reason, detail: v.detail });
-      continue;
+    if (!qualifiedForAny) {
+      const reason = !THEME_NAMES.some((t) => row.themes.includes(t))
+        ? 'no-target-theme'
+        : 'rating-or-move-count';
+      stats.globalRejections[reason] = (stats.globalRejections[reason] || 0) + 1;
     }
-    stats.keptAfterVerify++;
-    candidates.push(row);
 
     if (stats.rowsScanned % 100000 === 0) {
-      process.stdout.write(`  scanned ${stats.rowsScanned}, verified ${stats.keptAfterVerify}\r`);
+      const totalVerified = Object.values(stats.perTheme).reduce((a, b) => a + b.keptAfterVerify, 0);
+      process.stdout.write(`  scanned ${stats.rowsScanned}, verified ${totalVerified}\r`);
     }
   }
-  console.log(`\n[parse] scanned ${stats.rowsScanned}, verified ${stats.keptAfterVerify}`);
-  return { candidates, rejected, stats };
+  console.log('');
+  return { buckets, rejected, stats };
 }
 
-function bumpRejection(stats, reason) {
-  stats.rejections[reason] = (stats.rejections[reason] || 0) + 1;
+function bumpThemeRejection(stats, theme, reason) {
+  stats.perTheme[theme].rejections[reason] = (stats.perTheme[theme].rejections[reason] || 0) + 1;
 }
 
-function sortAndCap(candidates) {
-  candidates.sort((a, b) => b.popularity - a.popularity);
-  const kept = candidates.slice(0, CAP);
-  const overCap = candidates.slice(CAP).map((c) => ({ id: c.id, reason: 'over-cap' }));
+function sortAndCapAll(buckets) {
+  const kept = {};
+  const overCap = [];
+  for (const theme of THEME_NAMES) {
+    const sorted = buckets[theme].sort((a, b) => b.popularity - a.popularity);
+    const rule = THEME_RULES[theme];
+    kept[theme] = sorted.slice(0, rule.cap);
+    for (const row of sorted.slice(rule.cap)) {
+      overCap.push({ id: row.id, theme, reason: 'over-cap' });
+    }
+  }
   return { kept, overCap };
 }
 
@@ -244,50 +253,63 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-async function writeOutputs(kept, allRejected, stats) {
+async function writeOutputs(kept, allRejected) {
   await mkdir(DATA_DIR, { recursive: true });
 
   const version = todayIso();
   const generatedAt = new Date().toISOString();
 
-  const themeFile = {
-    version,
-    theme: 'mateIn1',
-    puzzles: kept.map(transformPuzzle),
-  };
-  const themeJson = JSON.stringify(themeFile, null, 0); // minified to keep transfer small
-  const themePath = join(DATA_DIR, 'mateIn1.json');
-  await writeFile(themePath, themeJson, 'utf8');
-  const sha256 = sha256Hex(Buffer.from(themeJson, 'utf8'));
+  const themeManifest = [];
+  for (const theme of THEME_NAMES) {
+    const themeFile = {
+      version,
+      theme,
+      puzzles: kept[theme].map(transformPuzzle),
+    };
+    const themeJson = JSON.stringify(themeFile, null, 0);
+    const themePath = join(DATA_DIR, `${theme}.json`);
+    await writeFile(themePath, themeJson, 'utf8');
+    const sha256 = sha256Hex(Buffer.from(themeJson, 'utf8'));
+    themeManifest.push({
+      name: theme,
+      file: `${theme}.json`,
+      count: kept[theme].length,
+      sha256,
+    });
+  }
 
   const indexFile = {
     version,
     generatedAt,
-    themes: [
-      { name: 'mateIn1', file: 'mateIn1.json', count: kept.length, sha256 },
-    ],
+    themes: themeManifest,
   };
   await writeFile(join(DATA_DIR, 'index.json'), JSON.stringify(indexFile, null, 2), 'utf8');
 
   const rejectedPath = join(DATA_DIR, 'rejected.log');
-  // One line per rejection: <id>\t<reason>\t<detail>
-  const lines = allRejected.map((r) => `${r.id}\t${r.reason}\t${r.detail ?? ''}`).join('\n') + '\n';
+  const lines = allRejected.map((r) => `${r.id}\t${r.theme ?? '-'}\t${r.reason}\t${r.detail ?? ''}`).join('\n') + '\n';
   await writeFile(rejectedPath, lines, 'utf8');
 
-  return { themePath, themeBytes: Buffer.byteLength(themeJson, 'utf8'), sha256 };
+  return themeManifest;
 }
 
-function printReport(stats, kept, themeBytes, sha256) {
+function printReport(stats, themeManifest) {
   console.log('\n────────── Build report ──────────');
   console.log(`  rows scanned:        ${stats.rowsScanned}`);
-  console.log(`  kept after filter:   ${stats.keptAfterFilter}`);
-  console.log(`  kept after verify:   ${stats.keptAfterVerify}`);
-  console.log(`  written to JSON:     ${kept.length}`);
-  console.log(`  theme file size:     ${(themeBytes / 1024).toFixed(1)} KB`);
-  console.log(`  sha256:              ${sha256}`);
-  console.log(`  rejection histogram:`);
-  for (const [reason, count] of Object.entries(stats.rejections).sort((a, b) => b[1] - a[1])) {
-    console.log(`    ${reason.padEnd(22)}: ${count}`);
+  console.log(`  global rejections:`);
+  for (const [reason, count] of Object.entries(stats.globalRejections).sort((a,b) => b[1]-a[1])) {
+    console.log(`    ${reason.padEnd(28)}: ${count}`);
+  }
+  console.log('  per-theme:');
+  for (const t of themeManifest) {
+    const pt = stats.perTheme[t.name];
+    console.log(`    ${t.name.padEnd(15)} written ${String(t.count).padStart(5)}  sha=${t.sha256.slice(0,8)}…`);
+    console.log(`      kept after filter: ${pt.keptAfterFilter}`);
+    console.log(`      kept after verify: ${pt.keptAfterVerify}`);
+    if (Object.keys(pt.rejections).length > 0) {
+      const reasons = Object.entries(pt.rejections).sort((a,b) => b[1]-a[1])
+        .map(([r,c]) => `${r}=${c}`).join(', ');
+      console.log(`      rejected:          ${reasons}`);
+    }
   }
   console.log('───────────────────────────────────\n');
 }
@@ -296,22 +318,25 @@ async function main() {
   const refresh = process.argv.includes('--refresh');
   await downloadIfNeeded({ refresh });
   await decompressIfNeeded();
-  const { candidates, rejected, stats } = await streamFilterVerify();
-  const { kept, overCap } = sortAndCap(candidates);
-  for (const r of overCap) {
-    bumpRejection(stats, 'over-cap');
-    rejected.push(r);
-  }
+  const { buckets, rejected, stats } = await streamFilterVerify();
+  const { kept, overCap } = sortAndCapAll(buckets);
+  for (const r of overCap) rejected.push(r);
 
-  if (kept.length < FLOOR) {
+  const failures = [];
+  for (const theme of THEME_NAMES) {
+    if (kept[theme].length < THEME_RULES[theme].floor) {
+      failures.push(`${theme}: ${kept[theme].length} verified (floor ${THEME_RULES[theme].floor})`);
+    }
+  }
+  if (failures.length > 0) {
     throw new Error(
-      `Only ${kept.length} verified puzzles, expected ≥ ${FLOOR}. ` +
+      `Some themes are below their floor:\n  ${failures.join('\n  ')}\n` +
       'Lichess may have changed their schema. Inspect rejected.log.',
     );
   }
 
-  const { themeBytes, sha256 } = await writeOutputs(kept, rejected, stats);
-  printReport(stats, kept, themeBytes, sha256);
+  const themeManifest = await writeOutputs(kept, rejected);
+  printReport(stats, themeManifest);
 }
 
 // Only run main() when invoked as a script, not when imported by tests.
