@@ -418,3 +418,14 @@ body:not(.show-coords) .cm-chessboard .coordinates { display: none; }
   pointer-events: none;
   z-index: 99;
 }
+
+/* Phase 5: respect prefers-reduced-motion. Functional cm-chessboard move
+   animations are not disabled — they're load-bearing for understanding the
+   move that just happened. */
+@media (prefers-reduced-motion: reduce) {
+  .shake-incorrect { animation: none; }
+  .flash-correct { animation-duration: 100ms; }
+  .settings-sheet { transition: none; }
+  .settings-scrim { transition: none; }
+  .confetti-canvas { display: none; }
+}
