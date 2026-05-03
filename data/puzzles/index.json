@@ -1,0 +1,12 @@
+{
+  "version": "2026-05-03",
+  "generatedAt": "2026-05-03T13:59:24.442Z",
+  "themes": [
+    {
+      "name": "mateIn1",
+      "file": "mateIn1.json",
+      "count": 2000,
+      "sha256": "091ff7a83bf31483c925bf383ec859adc47097c7bfcb25c10ca13973b6532225"
+    }
+  ]
+}
