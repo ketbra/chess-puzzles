@@ -1,6 +1,7 @@
 // src/loader.js
-// Orchestrates fetch + IndexedDB caching for puzzle data.
-// Public API: loadPuzzles(theme, opts) → Promise<Puzzle[]>
+// Orchestrates fetch + IndexedDB caching for puzzle data across all themes.
+// Public API: loadPuzzles(opts) → Promise<Puzzle[]> — returns the deduplicated
+// union of all themes in the index.json manifest.
 
 import { Store } from './store.js';
 
@@ -13,20 +14,18 @@ export class LoaderError extends Error {
 
 const DEFAULT_BASE = '/data/puzzles';
 
-export async function loadPuzzles(theme = 'mateIn1', opts = {}) {
+export async function loadPuzzles(opts = {}) {
   const fetchFn = opts.fetch ?? globalThis.fetch;
   const store = opts.store ?? await new Store().open();
   const fetchTimeoutMs = opts.fetchTimeoutMs ?? 5000;
   const onProgress = opts.onProgress;
   const baseUrl = opts.baseUrl ?? DEFAULT_BASE;
 
-  // Read cache.
   const [cachedPuzzles, localVersion] = await Promise.all([
     store.getAllPuzzles(),
     store.getVersion(),
   ]);
 
-  // Try to fetch the manifest.
   let index;
   try {
     index = await fetchJsonWithTimeout(fetchFn, `${baseUrl}/index.json`, fetchTimeoutMs);
@@ -39,50 +38,63 @@ export async function loadPuzzles(theme = 'mateIn1', opts = {}) {
     return cachedPuzzles;
   }
 
-  // Need to (re)fetch the theme file.
-  const themeMeta = index.themes.find((t) => t.name === theme);
-  if (!themeMeta) {
-    if (cachedPuzzles.length > 0) return cachedPuzzles;
-    throw new LoaderError(`theme '${theme}' not in manifest`);
-  }
+  // Fetch all themes in parallel.
+  let totalLoaded = 0;
+  const reportProgress = () => onProgress && onProgress(totalLoaded, 0);
 
-  let themeBytes, themeText;
+  const fetched = [];
   try {
-    ({ bytes: themeBytes, text: themeText } = await fetchWithProgress(
-      fetchFn,
-      `${baseUrl}/${themeMeta.file}`,
-      onProgress,
-      fetchTimeoutMs,
-    ));
+    const themePromises = index.themes.map(async (themeMeta) => {
+      const { bytes, text } = await fetchWithProgress(
+        fetchFn,
+        `${baseUrl}/${themeMeta.file}`,
+        (delta) => {
+          totalLoaded += delta;
+          reportProgress();
+        },
+        fetchTimeoutMs,
+      );
+      return { theme: themeMeta.name, bytes, text, expectedSha: themeMeta.sha256 };
+    });
+    const results = await Promise.all(themePromises);
+    fetched.push(...results);
   } catch (err) {
     if (cachedPuzzles.length > 0) return cachedPuzzles;
-    throw new LoaderError(`failed to fetch theme: ${err.message}`);
+    throw new LoaderError(`failed to fetch one or more themes: ${err.message}`);
   }
 
-  // sha256-verify.
-  const computedSha = await sha256Hex(themeBytes);
-  if (computedSha.toLowerCase() !== themeMeta.sha256.toLowerCase()) {
-    console.warn(
-      `[loader] sha256 mismatch for ${themeMeta.file}: expected ${themeMeta.sha256}, got ${computedSha}. Keeping cached data.`,
-    );
-    if (cachedPuzzles.length > 0) return cachedPuzzles;
-    throw new LoaderError('downloaded theme failed integrity check');
+  // Verify every theme's sha256 BEFORE writing anything.
+  for (const f of fetched) {
+    const computed = await sha256Hex(f.bytes);
+    if (computed.toLowerCase() !== f.expectedSha.toLowerCase()) {
+      console.warn(
+        `[loader] sha256 mismatch for ${f.theme}.json: expected ${f.expectedSha}, got ${computed}. Keeping cached data.`,
+      );
+      if (cachedPuzzles.length > 0) return cachedPuzzles;
+      throw new LoaderError(`theme '${f.theme}' failed integrity check`);
+    }
   }
 
-  // Parse and store.
-  let parsed;
-  try {
-    parsed = JSON.parse(themeText);
-  } catch (err) {
-    if (cachedPuzzles.length > 0) return cachedPuzzles;
-    throw new LoaderError(`theme JSON parse failed: ${err.message}`);
+  // Parse every theme.
+  const allPuzzles = [];
+  for (const f of fetched) {
+    let parsed;
+    try {
+      parsed = JSON.parse(f.text);
+    } catch (err) {
+      if (cachedPuzzles.length > 0) return cachedPuzzles;
+      throw new LoaderError(`theme '${f.theme}' JSON parse failed: ${err.message}`);
+    }
+    if (Array.isArray(parsed.puzzles)) {
+      for (const p of parsed.puzzles) allPuzzles.push(p);
+    }
   }
 
-  await store.replacePuzzles(theme, parsed.puzzles);
+  await store.replacePuzzles('all', allPuzzles);
   await store.setVersion(index.version);
   await store.setLastFetch(Date.now());
 
-  return parsed.puzzles;
+  return await store.getAllPuzzles();
 }
 
 // ───── helpers ─────
@@ -99,20 +111,16 @@ async function fetchJsonWithTimeout(fetchFn, url, timeoutMs) {
   }
 }
 
-async function fetchWithProgress(fetchFn, url, onProgress, timeoutMs) {
+async function fetchWithProgress(fetchFn, url, onChunk, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetchFn(url, { signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const total = Number(res.headers.get('Content-Length')) || 0;
-
-    // If the response body isn't a ReadableStream (e.g., in older test mocks),
-    // fall back to arrayBuffer.
     if (!res.body || typeof res.body.getReader !== 'function') {
       const buf = new Uint8Array(await res.arrayBuffer());
-      if (onProgress) onProgress(buf.byteLength, buf.byteLength);
+      if (onChunk) onChunk(buf.byteLength);
       return { bytes: buf, text: new TextDecoder().decode(buf) };
     }
 
@@ -124,7 +132,7 @@ async function fetchWithProgress(fetchFn, url, onProgress, timeoutMs) {
       if (done) break;
       chunks.push(value);
       loaded += value.byteLength;
-      if (onProgress) onProgress(loaded, total);
+      if (onChunk) onChunk(value.byteLength);
     }
     const bytes = new Uint8Array(loaded);
     let offset = 0;
