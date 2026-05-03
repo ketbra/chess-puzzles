@@ -7,11 +7,14 @@
     "vendor": "node scripts/vendor.mjs",
     "dev": "python3 -m http.server 8000",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build-puzzles": "node scripts/build-puzzles.mjs"
   },
   "devDependencies": {
     "chess.js": "^1.0.0",
     "cm-chessboard": "^8.0.0",
+    "fake-indexeddb": "^6.0.0",
+    "idb": "^8.0.0",
     "vitest": "^2.0.0"
   }
 }

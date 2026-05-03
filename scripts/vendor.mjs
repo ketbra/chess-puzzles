@@ -54,10 +54,12 @@ async function vendorPackage(pkgName) {
 console.log('Vendoring libraries into /vendor/ ...');
 const chessEntry = await vendorPackage('chess.js');
 const boardEntry = await vendorPackage('cm-chessboard');
+const idbEntry = await vendorPackage('idb');
 
 const importMapHint = {
   'chess.js': `/vendor/chess.js/${chessEntry}`,
   'cm-chessboard': `/vendor/cm-chessboard/${boardEntry}`,
+  'idb': `/vendor/idb/${idbEntry}`,
 };
 console.log('\nImport map paths to use in index.html:');
 console.log(JSON.stringify({ imports: importMapHint }, null, 2));
