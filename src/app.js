@@ -13,6 +13,7 @@ import { setProgress, hideProgress } from './ui/progress.js';
 import { renderStats } from './ui/header.js';
 import { renderChips } from './ui/chips.js';
 import { renderStars } from './ui/stars.js';
+import { bindInstall } from './ui/install.js';
 
 const SETUP_DELAY_MS = 600;
 const OPPONENT_REPLY_DELAY_MS = 400;
@@ -23,6 +24,16 @@ function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    console.log('[sw] registered, scope:', reg.scope);
+  } catch (err) {
+    console.warn('[sw] registration failed:', err);
+  }
+}
+
 let session = null;
 let board = null;
 let stats = null;
@@ -30,6 +41,8 @@ let filters = null;
 
 async function main() {
   setStatus('Loading puzzles…');
+  registerServiceWorker(); // fire-and-forget
+  bindInstall();
   board = new Board('#board', { onUserMove: handleUserMove });
   bindActions();
 
