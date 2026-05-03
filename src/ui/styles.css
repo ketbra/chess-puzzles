@@ -111,3 +111,28 @@ main {
 .shake-incorrect {
   animation: shake-incorrect 320ms ease;
 }
+
+/* Loading progress bar shown during first-run puzzle fetch. */
+.loading-progress {
+  width: 100%;
+  height: 12px;
+  border: 2px solid #5a3a22;
+  border-radius: 6px;
+  background: #2a201a;
+  appearance: none;
+  -webkit-appearance: none;
+  overflow: hidden;
+}
+
+.loading-progress::-webkit-progress-bar {
+  background: #2a201a;
+}
+
+.loading-progress::-webkit-progress-value {
+  background: #f0d9b5;
+  transition: width 200ms ease;
+}
+
+.loading-progress::-moz-progress-bar {
+  background: #f0d9b5;
+}
