@@ -10,6 +10,18 @@
 import { Chess } from 'chess.js';
 import { parseUci } from '../src/uci.js';
 
+// Per-theme rules. Defined once; consumed by passesFilter, verifyPuzzle, and
+// the orchestration loop.
+export const THEME_RULES = {
+  mateIn1:      { maxRating: 1200, exactMoves: 2, requiresMate: true,  cap: 2000, floor: 500 },
+  mateIn2:      { maxRating: 1400, exactMoves: 4, requiresMate: true,  cap: 2000, floor: 250 },
+  fork:         { maxRating: 1300, minMoves: 2,   requiresMate: false, cap: 2000, floor: 250 },
+  pin:          { maxRating: 1300, minMoves: 2,   requiresMate: false, cap: 2000, floor: 250 },
+  hangingPiece: { maxRating: 1200, minMoves: 2,   requiresMate: false, cap: 2000, floor: 250 },
+};
+
+export const THEME_NAMES = Object.keys(THEME_RULES);
+
 // ───────── Pure helpers (exported for tests) ─────────
 
 export function parseLichessRow(line) {
@@ -42,10 +54,13 @@ export function parseLichessRow(line) {
   };
 }
 
-export function passesFilter(row) {
-  if (!row.themes.includes('mateIn1')) return false;
-  if (row.rating > 1200) return false;
-  if (row.movesArr.length !== 2) return false;
+export function passesFilter(row, themeName, rules = THEME_RULES) {
+  const rule = rules[themeName];
+  if (!rule) return false;
+  if (!row.themes.includes(themeName)) return false;
+  if (row.rating > rule.maxRating) return false;
+  if (rule.exactMoves != null && row.movesArr.length !== rule.exactMoves) return false;
+  if (rule.minMoves != null && row.movesArr.length < rule.minMoves) return false;
   return true;
 }
 
@@ -68,33 +83,27 @@ export function transformPuzzle(row) {
   };
 }
 
-export function verifyPuzzle(row) {
+export function verifyPuzzle(row, themeName = 'mateIn1', rules = THEME_RULES) {
+  const rule = rules[themeName];
   let chess;
-  try {
-    chess = new Chess(row.fen);
-  } catch (e) {
-    return { ok: false, reason: 'bad-fen', detail: e.message };
+  try { chess = new Chess(row.fen); }
+  catch (e) { return { ok: false, reason: 'bad-fen', detail: e.message }; }
+
+  for (let i = 0; i < row.movesArr.length; i++) {
+    try {
+      const m = parseUci(row.movesArr[i]);
+      const result = chess.move(m);
+      if (!result) {
+        return { ok: false, reason: i === 0 ? 'illegal-setup' : 'illegal-move',
+                 detail: `at move ${i}: ${row.movesArr[i]}` };
+      }
+    } catch (e) {
+      return { ok: false, reason: i === 0 ? 'illegal-setup' : 'illegal-move',
+               detail: `at move ${i}: ${e.message}` };
+    }
   }
 
-  // Apply moves[0] (opponent setup).
-  try {
-    const m = parseUci(row.movesArr[0]);
-    const result = chess.move(m);
-    if (!result) return { ok: false, reason: 'illegal-setup' };
-  } catch (e) {
-    return { ok: false, reason: 'illegal-setup', detail: e.message };
-  }
-
-  // Apply moves[1] (user mate).
-  try {
-    const m = parseUci(row.movesArr[1]);
-    const result = chess.move(m);
-    if (!result) return { ok: false, reason: 'illegal-user-move' };
-  } catch (e) {
-    return { ok: false, reason: 'illegal-user-move', detail: e.message };
-  }
-
-  if (!chess.isCheckmate()) {
+  if (rule.requiresMate && !chess.isCheckmate()) {
     return { ok: false, reason: 'not-mate' };
   }
   return { ok: true };

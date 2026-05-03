@@ -5,6 +5,7 @@ import {
   ratingToStars,
   transformPuzzle,
   verifyPuzzle,
+  THEME_RULES,
 } from '../scripts/build-puzzles.mjs';
 
 // Real Lichess CSV row format (from the published database):
@@ -45,24 +46,24 @@ describe('passesFilter', () => {
     const r = {
       themes: ['mateIn1', 'short'], rating: 900, movesArr: ['e2e4', 'e7e5']
     };
-    expect(passesFilter(r)).toBe(true);
+    expect(passesFilter(r, 'mateIn1')).toBe(true);
   });
 
   it('rejects rating > 1200', () => {
     const r = { themes: ['mateIn1'], rating: 1201, movesArr: ['a','b'] };
-    expect(passesFilter(r)).toBe(false);
+    expect(passesFilter(r, 'mateIn1')).toBe(false);
   });
 
   it('rejects when not mateIn1', () => {
     const r = { themes: ['fork', 'short'], rating: 900, movesArr: ['a','b'] };
-    expect(passesFilter(r)).toBe(false);
+    expect(passesFilter(r, 'mateIn1')).toBe(false);
   });
 
   it('rejects when move count is not exactly 2', () => {
     const r1 = { themes: ['mateIn1'], rating: 800, movesArr: ['a'] };
     const r3 = { themes: ['mateIn1'], rating: 800, movesArr: ['a','b','c'] };
-    expect(passesFilter(r1)).toBe(false);
-    expect(passesFilter(r3)).toBe(false);
+    expect(passesFilter(r1, 'mateIn1')).toBe(false);
+    expect(passesFilter(r3, 'mateIn1')).toBe(false);
   });
 });
 
@@ -115,7 +116,7 @@ describe('verifyPuzzle', () => {
   it('rejects when the user move is illegal', () => {
     const r = verifyPuzzle({ ...SYNTHETIC_M1, movesArr: ['c6e5', 'h2h4'] }); // h2h4 not legal (no pawn there)
     expect(r.ok).toBe(false);
-    expect(r.reason).toBe('illegal-user-move');
+    expect(r.reason).toBe('illegal-move');
   });
 
   it('rejects when the user move does not deliver mate', () => {
@@ -123,5 +124,101 @@ describe('verifyPuzzle', () => {
     const r = verifyPuzzle({ ...SYNTHETIC_M1, movesArr: ['c6e5', 'g1g2'] });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe('not-mate');
+  });
+});
+
+const TACTICAL_OK = {
+  id: 'T1',
+  fen: '4k3/8/8/8/8/8/4P3/4K3 w - - 0 1',
+  movesArr: ['e2e4', 'e8d8'], // both legal: pawn double-push, then king move
+  rating: 1100,
+  themes: ['fork'],
+  popularity: 50,
+};
+
+const MATE2_FIXTURE = {
+  // Two-rook ladder mate from Phase 1's matein2Fixture.
+  id: 'M2',
+  fen: '6k1/8/5K2/8/8/8/R7/R7 b - - 0 1',
+  movesArr: ['g8h8', 'a2a8', 'h8h7', 'a1h1'],
+  rating: 1200,
+  themes: ['mateIn2'],
+  popularity: 50,
+};
+
+describe('passesFilter (mateIn2)', () => {
+  it('accepts rating ≤ 1400 with exactly 4 moves', () => {
+    expect(passesFilter(MATE2_FIXTURE, 'mateIn2')).toBe(true);
+  });
+
+  it('rejects rating > 1400', () => {
+    expect(passesFilter({ ...MATE2_FIXTURE, rating: 1401 }, 'mateIn2')).toBe(false);
+  });
+
+  it('rejects move count != 4', () => {
+    expect(passesFilter({ ...MATE2_FIXTURE, movesArr: ['a','b','c'] }, 'mateIn2')).toBe(false);
+    expect(passesFilter({ ...MATE2_FIXTURE, movesArr: ['a','b','c','d','e'] }, 'mateIn2')).toBe(false);
+  });
+});
+
+describe('passesFilter (fork)', () => {
+  it('accepts rating ≤ 1300 with ≥ 2 moves', () => {
+    expect(passesFilter(TACTICAL_OK, 'fork')).toBe(true);
+    expect(passesFilter({ ...TACTICAL_OK, movesArr: ['a','b','c','d'] }, 'fork')).toBe(true);
+  });
+
+  it('rejects rating > 1300', () => {
+    expect(passesFilter({ ...TACTICAL_OK, rating: 1301 }, 'fork')).toBe(false);
+  });
+
+  it('rejects move count < 2', () => {
+    expect(passesFilter({ ...TACTICAL_OK, movesArr: ['a'] }, 'fork')).toBe(false);
+  });
+
+  it('rejects when not tagged with fork', () => {
+    expect(passesFilter({ ...TACTICAL_OK, themes: ['pin'] }, 'fork')).toBe(false);
+  });
+});
+
+describe('verifyPuzzle (mateIn2)', () => {
+  it('accepts a hand-built mate-in-2', () => {
+    expect(verifyPuzzle(MATE2_FIXTURE, 'mateIn2').ok).toBe(true);
+  });
+
+  it('rejects when last move does not mate', () => {
+    const v = verifyPuzzle({ ...MATE2_FIXTURE, movesArr: ['g8h8','a2a8','h8h7','f6f5'] }, 'mateIn2');
+    expect(v.ok).toBe(false);
+    expect(v.reason).toBe('not-mate');
+  });
+});
+
+describe('verifyPuzzle (tactical)', () => {
+  it('accepts any all-legal sequence for fork (no mate check)', () => {
+    expect(verifyPuzzle(TACTICAL_OK, 'fork').ok).toBe(true);
+  });
+
+  it('rejects illegal move in tactical sequence', () => {
+    const v = verifyPuzzle({ ...TACTICAL_OK, movesArr: ['e2e5', 'e8d8'] }, 'fork'); // e2-e5 illegal (3 squares)
+    expect(v.ok).toBe(false);
+    expect(['illegal-setup', 'illegal-move']).toContain(v.reason);
+  });
+});
+
+describe('THEME_RULES', () => {
+  it('exposes all 5 themes with rating caps', () => {
+    expect(Object.keys(THEME_RULES).sort()).toEqual(['fork','hangingPiece','mateIn1','mateIn2','pin']);
+    expect(THEME_RULES.mateIn1.maxRating).toBe(1200);
+    expect(THEME_RULES.mateIn2.maxRating).toBe(1400);
+    expect(THEME_RULES.fork.maxRating).toBe(1300);
+    expect(THEME_RULES.pin.maxRating).toBe(1300);
+    expect(THEME_RULES.hangingPiece.maxRating).toBe(1200);
+  });
+
+  it('mate themes require mate; tactical themes do not', () => {
+    expect(THEME_RULES.mateIn1.requiresMate).toBe(true);
+    expect(THEME_RULES.mateIn2.requiresMate).toBe(true);
+    expect(THEME_RULES.fork.requiresMate).toBe(false);
+    expect(THEME_RULES.pin.requiresMate).toBe(false);
+    expect(THEME_RULES.hangingPiece.requiresMate).toBe(false);
   });
 });
