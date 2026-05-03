@@ -12,7 +12,7 @@ export class LoaderError extends Error {
   }
 }
 
-const DEFAULT_BASE = '/data/puzzles';
+const DEFAULT_BASE = './data/puzzles';
 
 export async function loadPuzzles(opts = {}) {
   const fetchFn = opts.fetch ?? globalThis.fetch;

@@ -7,7 +7,7 @@ import {
 } from 'cm-chessboard';
 import { Markers, MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers.js';
 
-const ASSETS_URL = '/vendor/cm-chessboard/assets/';
+const ASSETS_URL = './vendor/cm-chessboard/assets/';
 
 export class Board {
   constructor(selector, { onUserMove }) {

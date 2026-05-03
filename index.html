@@ -4,18 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Chess Puzzles</title>
-    <link rel="stylesheet" href="/vendor/cm-chessboard/assets/chessboard.css" />
-    <link rel="stylesheet" href="/vendor/cm-chessboard/assets/extensions/markers/markers.css" />
-    <link rel="stylesheet" href="/src/ui/styles.css" />
+    <link rel="stylesheet" href="vendor/cm-chessboard/assets/chessboard.css" />
+    <link rel="stylesheet" href="vendor/cm-chessboard/assets/extensions/markers/markers.css" />
+    <link rel="stylesheet" href="src/ui/styles.css" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#7a4a2b" />
     <script type="importmap">
       {
         "imports": {
-          "chess.js": "/vendor/chess.js/dist/esm/chess.js",
-          "cm-chessboard": "/vendor/cm-chessboard/src/Chessboard.js",
-          "cm-chessboard/": "/vendor/cm-chessboard/",
-          "idb": "/vendor/idb/build/index.js"
+          "chess.js": "./vendor/chess.js/dist/esm/chess.js",
+          "cm-chessboard": "./vendor/cm-chessboard/src/Chessboard.js",
+          "cm-chessboard/": "./vendor/cm-chessboard/",
+          "idb": "./vendor/idb/build/index.js"
         }
       }
     </script>
@@ -35,6 +35,6 @@
         <button id="skip" type="button" aria-label="Skip puzzle">Skip</button>
       </div>
     </main>
-    <script type="module" src="/src/app.js"></script>
+    <script type="module" src="src/app.js"></script>
   </body>
 </html>
