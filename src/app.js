@@ -13,6 +13,10 @@ import { setProgress, hideProgress } from './ui/progress.js';
 import { renderStats } from './ui/header.js';
 import { renderChips } from './ui/chips.js';
 import { renderStars } from './ui/stars.js';
+import { Settings } from './settings.js';
+import { bindSettings } from './ui/settings.js';
+import { fireConfetti } from './ui/confetti.js';
+import { playMove, playSuccess, playFail } from './ui/sounds.js';
 import { bindInstall } from './ui/install.js';
 
 const SETUP_DELAY_MS = 600;
@@ -38,6 +42,10 @@ let session = null;
 let board = null;
 let stats = null;
 let filters = null;
+let settings = null;
+const reducedMotion = typeof window !== 'undefined'
+  && window.matchMedia
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 async function main() {
   setStatus('Loading puzzles…');
@@ -67,6 +75,16 @@ async function main() {
   renderChips({ active: filters.theme, counts: filters.counts(), onSelect: handleThemeChange });
   renderStars({ cap: filters.maxStars, onSelect: handleStarChange });
 
+  settings = await new Settings(store).load();
+  settings.apply();
+  bindSettings({
+    settings,
+    onResetStats: async () => {
+      await stats.reset();
+      renderStats(stats.snapshot());
+    },
+  });
+
   await loadNextPuzzle();
 }
 
@@ -94,6 +112,7 @@ async function handleUserMove({ from, to, promotion }) {
   if (r.result === 'incorrect') {
     await stats.onWrongMove();
     renderStats(stats.snapshot());
+    if (settings && settings.soundOn) playFail();
     setStatus('Try again.');
     await Promise.all([
       shakeIncorrect(board.element),
@@ -107,12 +126,16 @@ async function handleUserMove({ from, to, promotion }) {
   if (r.solved) {
     await stats.onCorrectSolve();
     renderStats(stats.snapshot());
+    if (settings && settings.soundOn) playSuccess();
+    if (!reducedMotion) fireConfetti({ theme: settings ? settings.theme : 'warm' });
     setStatus('Solved!');
     await wait(POST_SOLVE_PAUSE_MS);
     await loadNextPuzzle();
     return;
   }
 
+  // Multi-move continuation: in-progress correct move plays the soft tap.
+  if (settings && settings.soundOn) playMove();
   await wait(OPPONENT_REPLY_DELAY_MS);
   await board.animateMove({ from: r.opponentReply.from, to: r.opponentReply.to });
   setStatus('Find the next best move.');
