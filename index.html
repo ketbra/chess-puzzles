@@ -22,6 +22,39 @@
   </head>
   <body>
     <button id="install-btn" type="button" class="install-btn" hidden>Install app</button>
+    <button id="gear-btn" type="button" class="gear-btn" aria-label="Settings">⚙</button>
+    <canvas id="confetti-canvas" class="confetti-canvas" aria-hidden="true"></canvas>
+    <div id="settings-scrim" class="settings-scrim" aria-hidden="true"></div>
+    <div id="settings-sheet" class="settings-sheet" role="dialog" aria-label="Settings">
+      <div class="settings-sheet-header">
+        <h2>Settings</h2>
+        <button id="settings-close" type="button" class="settings-close" aria-label="Close">×</button>
+      </div>
+      <div class="setting-row">
+        <span>Sound</span>
+        <label class="toggle">
+          <input id="setting-sound" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <span>Theme</span>
+        <div class="segmented">
+          <button id="setting-theme-warm" type="button">Warm</button>
+          <button id="setting-theme-cool" type="button">Cool</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span>Coordinates</span>
+        <label class="toggle">
+          <input id="setting-coords" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <button id="setting-reset-stats" type="button" class="reset-btn">Reset stats</button>
+      </div>
+    </div>
     <main>
       <div id="stats-header" class="stats-header"></div>
       <div id="theme-chips" class="theme-chips"></div>

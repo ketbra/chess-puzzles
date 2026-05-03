@@ -20,7 +20,7 @@ export class Board {
       orientation: COLOR.white,
       style: {
         cssClass: 'default',
-        showCoordinates: false,
+        showCoordinates: true,
         pieces: { type: 'svgSprite', file: 'pieces/staunty.svg' },
       },
       extensions: [{ class: Markers }],

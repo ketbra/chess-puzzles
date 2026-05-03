@@ -191,11 +191,11 @@ main {
 .star-on  { color: #f0d9b5; }
 .star-off { color: #5a3a22; opacity: 0.4; }
 
-/* Install button — fixed top-right, only visible when bindInstall shows it. */
+/* Install button — fixed top-left, only visible when bindInstall shows it. */
 .install-btn {
   position: fixed;
   top: 12px;
-  right: 12px;
+  left: 12px;
   z-index: 100;
   min-height: 36px;
   padding: 6px 14px;
@@ -211,4 +211,210 @@ main {
 
 .install-btn:hover {
   background: #ecdab9;
+}
+
+/* Gear icon — top-right; opens settings sheet. */
+.gear-btn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 100;
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  border-radius: 50%;
+  border: 2px solid #5a3a22;
+  background: #2a201a;
+  color: #efe6dc;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gear-btn:hover {
+  background: #3a2a1f;
+}
+
+/* Scrim behind the sheet. */
+.settings-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 200;
+}
+
+.settings-scrim.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Bottom sheet. */
+.settings-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 201;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  background: #2a201a;
+  color: #efe6dc;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  border: 2px solid #5a3a22;
+  border-bottom: none;
+  transform: translateY(100%);
+  transition: transform 250ms ease;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.settings-sheet.open {
+  transform: translateY(0);
+}
+
+.settings-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.settings-sheet-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.settings-close {
+  background: transparent;
+  border: none;
+  color: #efe6dc;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px;
+  border-top: 1px solid #4a3525;
+}
+
+.setting-row:first-child {
+  border-top: none;
+}
+
+.setting-row > span {
+  font-size: 16px;
+}
+
+/* Toggle (pill-slider) styled checkbox. */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle .slider {
+  position: absolute;
+  inset: 0;
+  background: #4a3525;
+  border-radius: 999px;
+  transition: background 150ms ease;
+}
+
+.toggle .slider::before {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  top: 3px;
+  background: #efe6dc;
+  border-radius: 50%;
+  transition: transform 150ms ease;
+}
+
+.toggle input:checked + .slider {
+  background: #f0d9b5;
+}
+
+.toggle input:checked + .slider::before {
+  transform: translateX(20px);
+  background: #2a201a;
+}
+
+/* Segmented (Warm | Cool). */
+.segmented {
+  display: flex;
+  border-radius: 999px;
+  border: 2px solid #5a3a22;
+  overflow: hidden;
+}
+
+.segmented button {
+  background: #2a201a;
+  color: #efe6dc;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: #f0d9b5;
+  color: #2a201a;
+}
+
+/* Reset stats button. */
+.reset-btn {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 2px solid #5a3a22;
+  background: #2a201a;
+  color: #efe6dc;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.reset-btn.confirming {
+  border-color: #a85a3c;
+  background: #5a2a1f;
+  color: #f0d9b5;
+}
+
+/* Cool theme overrides for board squares. */
+body.theme-cool .board-stage .cm-chessboard.default .board .square.white { fill: #dee3e6; }
+body.theme-cool .board-stage .cm-chessboard.default .board .square.black { fill: #5d7a92; }
+
+/* Coordinates visibility — controlled by body.show-coords class. */
+body:not(.show-coords) .cm-chessboard .coordinates { display: none; }
+
+/* Confetti canvas (Phase 5 — full-screen overlay; particles drawn by JS). */
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 99;
 }
