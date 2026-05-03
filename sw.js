@@ -9,7 +9,7 @@
 //
 // Bump SW_VERSION when releasing; the activate handler purges old caches.
 
-const SW_VERSION = 'v2';
+const SW_VERSION = 'v3';
 const CACHE_NAME = `chess-puzzles-${SW_VERSION}`;
 
 const APP_SHELL = [
