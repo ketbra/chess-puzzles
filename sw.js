@@ -9,7 +9,7 @@
 //
 // Bump SW_VERSION when releasing; the activate handler purges old caches.
 
-const SW_VERSION = 'v4';
+const SW_VERSION = 'v5';
 const CACHE_NAME = `chess-puzzles-${SW_VERSION}`;
 
 const APP_SHELL = [
@@ -22,6 +22,7 @@ const APP_SHELL = [
   './src/store.js',
   './src/stats.js',
   './src/filters.js',
+  './src/profile.js',
   './src/settings.js',
   './src/puzzle.js',
   './src/uci.js',
@@ -32,6 +33,7 @@ const APP_SHELL = [
   './src/ui/chips.js',
   './src/ui/stars.js',
   './src/ui/install.js',
+  './src/ui/profile.js',
   './src/ui/settings.js',
   './src/ui/confetti.js',
   './src/ui/sounds.js',
