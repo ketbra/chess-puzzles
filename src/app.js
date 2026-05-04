@@ -14,6 +14,7 @@ import { renderStats } from './ui/header.js';
 import { renderChips } from './ui/chips.js';
 import { renderStars } from './ui/stars.js';
 import { Settings } from './settings.js';
+import { Profiles, ProfileScopedStore } from './profile.js';
 import { bindSettings } from './ui/settings.js';
 import { fireConfetti } from './ui/confetti.js';
 import { playMove, playSuccess, playFail } from './ui/sounds.js';
@@ -68,17 +69,22 @@ async function main() {
   hideProgress();
 
   const store = await new Store().open();
-  stats   = await new Stats(store).load();
-  filters = await new Filters(store, puzzles).load();
+  const profiles = await new Profiles(store).load();
+  const active = profiles.active(); // never null after load (migration creates Player 1)
+  const scopedStore = new ProfileScopedStore(store, active.id);
+
+  stats    = await new Stats(scopedStore).load();
+  filters  = await new Filters(scopedStore, puzzles).load();
+  settings = await new Settings(scopedStore).load();
+  settings.apply();
 
   renderStats(stats.snapshot());
   renderChips({ active: filters.theme, counts: filters.counts(), onSelect: handleThemeChange });
   renderStars({ cap: filters.maxStars, onSelect: handleStarChange });
 
-  settings = await new Settings(store).load();
-  settings.apply();
   bindSettings({
     settings,
+    profiles,
     onResetStats: async () => {
       await stats.reset();
       renderStats(stats.snapshot());
