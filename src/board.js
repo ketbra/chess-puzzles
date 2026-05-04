@@ -10,10 +10,12 @@ import { Markers, MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Marke
 const ASSETS_URL = './vendor/cm-chessboard/assets/';
 
 export class Board {
-  constructor(selector, { onUserMove }) {
+  constructor(selector, { onUserMove, onLegalMoves }) {
     const root = document.querySelector(selector);
     if (!root) throw new Error(`Board: selector ${selector} not found`);
     this.root = root;
+    this.userColor = null;
+    this.onLegalMoves = onLegalMoves;
 
     this.cb = new Chessboard(root, {
       assetsUrl: ASSETS_URL,
@@ -32,6 +34,11 @@ export class Board {
 
   get element() {
     return this.root;
+  }
+
+  setUserColor(color) {
+    // Accepts 'w'/'b' (chess.js style) or 'white'/'black' (cm-chessboard style).
+    this.userColor = color;
   }
 
   setPosition(fen, orientation) {
@@ -62,11 +69,30 @@ export class Board {
     if (!this.onUserMove) return false;
 
     if (event.type === INPUT_EVENT_TYPE.moveInputStarted) {
-      return true; // allow all start squares
+      // Color guard: only user's pieces are pickable.
+      if (this.userColor && event.piece) {
+        const pieceColor = event.piece[0]; // cm-chessboard pieces are 'wK', 'bN', etc.
+        const wantColor = this.userColor === 'white' ? 'w'
+                        : this.userColor === 'black' ? 'b'
+                        : this.userColor;
+        if (pieceColor !== wantColor) return false;
+      }
+      // Paint legal-move markers via the app-supplied callback.
+      if (this.onLegalMoves) {
+        const square = event.squareFrom ?? event.square;
+        const moves = this.onLegalMoves(square);
+        this.#paintLegalMarkers(moves);
+      }
+      return true;
     }
 
     if (event.type === INPUT_EVENT_TYPE.validateMoveInput) {
       return true; // always accept; game logic validates externally
+    }
+
+    if (event.type === INPUT_EVENT_TYPE.moveInputCanceled
+     || event.type === INPUT_EVENT_TYPE.moveInputFinished) {
+      this.#clearLegalMarkers();
     }
 
     if (event.type === INPUT_EVENT_TYPE.moveInputFinished) {
@@ -79,5 +105,21 @@ export class Board {
       }
     }
     return undefined;
+  }
+
+  #paintLegalMarkers(moves) {
+    this.#clearLegalMarkers();
+    for (const m of moves) {
+      if (m.isCapture) {
+        this.cb.addMarker(MARKER_TYPE.circle, m.to);
+      } else {
+        this.cb.addMarker(MARKER_TYPE.dot, m.to);
+      }
+    }
+  }
+
+  #clearLegalMarkers() {
+    this.cb.removeMarkers(MARKER_TYPE.dot);
+    this.cb.removeMarkers(MARKER_TYPE.circle);
   }
 }
