@@ -2,7 +2,10 @@
 // Binds the gear icon, settings sheet, scrim, and the four controls
 // (sound toggle, theme segmented, coords toggle, reset stats button).
 
-export function bindSettings({ settings, onResetStats }) {
+import { bindProfileSection } from './profile.js';
+
+export function bindSettings({ settings, profiles, onResetStats }) {
+  bindProfileSection({ profiles });
   const gear = document.querySelector('#gear-btn');
   const sheet = document.querySelector('#settings-sheet');
   const scrim = document.querySelector('#settings-scrim');

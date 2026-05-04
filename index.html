@@ -30,6 +30,19 @@
         <h2>Settings</h2>
         <button id="settings-close" type="button" class="settings-close" aria-label="Close">×</button>
       </div>
+      <!-- Phase 6.1: profile section -->
+      <div class="setting-row profile-row">
+        <button id="profile-active" type="button" class="profile-active" aria-label="Switch profile">
+          <span id="profile-active-avatar" class="profile-avatar"></span>
+          <span id="profile-active-name" class="profile-active-name"></span>
+          <span class="profile-active-chevron">›</span>
+        </button>
+        <button id="profile-rename" type="button" class="profile-rename" aria-label="Rename profile">✏</button>
+      </div>
+      <div id="profile-switcher" class="profile-switcher" hidden>
+        <div id="profile-list" class="profile-list"></div>
+        <button id="profile-add" type="button" class="profile-add">+ Add profile</button>
+      </div>
       <div class="setting-row">
         <span>Sound</span>
         <label class="toggle">
