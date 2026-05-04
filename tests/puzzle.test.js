@@ -291,3 +291,48 @@ describe('playSolutionStep', () => {
     expect(() => s.playSolutionStep()).toThrow(); // after solved
   });
 });
+
+describe('legalMovesFrom', () => {
+  it('returns [] when status is not awaiting-user', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    // Pre-setup: status === 'awaiting-setup'.
+    expect(s.legalMovesFrom('a1')).toEqual([]);
+
+    // Post-solve: status === 'solved'.
+    s.applyOpponentSetup();
+    s.attemptUserMove({ from: 'a1', to: 'a8' }); // mate
+    expect(s.legalMovesFrom('a1')).toEqual([]);
+  });
+
+  it('returns legal moves for the source square after setup', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    const moves = s.legalMovesFrom('a1');
+    // The rook on a1 should have a8 in its legal-move list (and others
+    // along the a-file and 1st rank, modulo blockers).
+    expect(moves.find((m) => m.to === 'a8')).toEqual({ to: 'a8', isCapture: false });
+    expect(moves.length).toBeGreaterThan(0);
+  });
+
+  it('flags captures correctly', () => {
+    // Position: white king on e1, white rook on a1, black king on h8, black
+    // pawn on a5. Black to move first (per Lichess convention), then white
+    // captures pawn a1×a5.
+    const synthPuzzle = {
+      id: 'TEST_CAPTURE',
+      fen: '7k/8/8/p7/8/8/8/R3K3 b - - 0 1',
+      moves: ['h8h7', 'a1a5'], // black king h8→h7, white captures pawn a1×a5
+      rating: 800,
+      themes: ['mateIn1'],
+      stars: 1,
+    };
+    const s = new PuzzleSession(synthPuzzle);
+    s.applyOpponentSetup();
+    const moves = s.legalMovesFrom('a1');
+    const capture = moves.find((m) => m.to === 'a5');
+    expect(capture).toEqual({ to: 'a5', isCapture: true });
+    // Other rook moves on the a-file (a2, a3, a4) should be non-captures.
+    const a2 = moves.find((m) => m.to === 'a2');
+    expect(a2?.isCapture).toBe(false);
+  });
+});

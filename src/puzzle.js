@@ -147,4 +147,13 @@ export class PuzzleSession {
     this.status = this.moveIndex >= this.puzzle.moves.length ? 'solved' : 'awaiting-user';
     return { applied, opponentReply, solved: this.status === 'solved' };
   }
+
+  legalMovesFrom(square) {
+    if (this.status !== 'awaiting-user') return [];
+    const moves = this.chess.moves({ square, verbose: true });
+    return moves.map((m) => ({
+      to: m.to,
+      isCapture: m.flags.includes('c') || m.flags.includes('e'),
+    }));
+  }
 }
