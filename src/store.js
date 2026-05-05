@@ -18,6 +18,7 @@ const PER_PROFILE_KEYS = [
   'solved', 'streak', 'bestStreak', 'todayCount', 'todayDate',
   'filterTheme', 'filterMaxStars',
   'soundOn', 'theme', 'showCoords',
+  'aidLegalMoves', 'aidKingEscape',
 ];
 
 const FIRST_PALETTE_COLOR = '#f0d9b5';
