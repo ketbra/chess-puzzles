@@ -9,13 +9,24 @@ import { Markers, MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Marke
 
 const ASSETS_URL = './vendor/cm-chessboard/assets/';
 
+// Phase 6.3: custom marker types for the king-escape aid. cm-chessboard
+// matches markers by reference equality (Marker.matches uses `===` on the
+// type object), so each const must be a stable singleton and the SAME
+// reference must be used for both addMarker and removeMarkers calls.
+const MARKER_KING_ESCAPE  = { class: 'marker-king-escape',  slice: 'markerSquare' };
+const MARKER_KING_COVERED = { class: 'marker-king-covered', slice: 'markerSquare' };
+
 export class Board {
-  constructor(selector, { onUserMove, onLegalMoves }) {
+  #showLegalMoves = true;   // Phase 6.3: toggleable via setShowLegalMoves
+  #showKingEscape = false;  // Phase 6.3: toggleable via setShowKingEscape
+
+  constructor(selector, { onUserMove, onLegalMoves, onKingSurround }) {
     const root = document.querySelector(selector);
     if (!root) throw new Error(`Board: selector ${selector} not found`);
     this.root = root;
     this.userColor = null;
     this.onLegalMoves = onLegalMoves;
+    this.onKingSurround = onKingSurround;
 
     this.cb = new Chessboard(root, {
       assetsUrl: ASSETS_URL,
@@ -39,6 +50,14 @@ export class Board {
   setUserColor(color) {
     // Accepts 'w'/'b' (chess.js style) or 'white'/'black' (cm-chessboard style).
     this.userColor = color;
+  }
+
+  setShowLegalMoves(on) {
+    this.#showLegalMoves = !!on;
+  }
+
+  setShowKingEscape(on) {
+    this.#showKingEscape = !!on;
   }
 
   setPosition(fen, orientation) {
@@ -69,7 +88,8 @@ export class Board {
     if (!this.onUserMove) return false;
 
     if (event.type === INPUT_EVENT_TYPE.moveInputStarted) {
-      // Color guard: only user's pieces are pickable.
+      // Color guard: only user's pieces are pickable. Unconditional — not
+      // part of the toggleable aid system.
       if (this.userColor && event.piece) {
         const pieceColor = event.piece[0]; // cm-chessboard pieces are 'wK', 'bN', etc.
         const wantColor = this.userColor === 'white' ? 'w'
@@ -77,11 +97,14 @@ export class Board {
                         : this.userColor;
         if (pieceColor !== wantColor) return false;
       }
-      // Paint legal-move markers via the app-supplied callback.
-      if (this.onLegalMoves) {
-        const square = event.squareFrom ?? event.square;
-        const moves = this.onLegalMoves(square);
-        this.#paintLegalMarkers(moves);
+      const square = event.squareFrom ?? event.square;
+      // Aid 1: green legal-move dots/rings.
+      if (this.#showLegalMoves && this.onLegalMoves) {
+        this.#paintLegalMarkers(this.onLegalMoves(square));
+      }
+      // Aid 2: red/gray king-escape markers.
+      if (this.#showKingEscape && this.onKingSurround) {
+        this.#paintKingMarkers(this.onKingSurround(square));
       }
       return true;
     }
@@ -92,7 +115,7 @@ export class Board {
 
     if (event.type === INPUT_EVENT_TYPE.moveInputCanceled
      || event.type === INPUT_EVENT_TYPE.moveInputFinished) {
-      this.#clearLegalMarkers();
+      this.#clearAidMarkers();
     }
 
     if (event.type === INPUT_EVENT_TYPE.moveInputFinished) {
@@ -108,7 +131,11 @@ export class Board {
   }
 
   #paintLegalMarkers(moves) {
-    this.#clearLegalMarkers();
+    // Clear the legal-move markers (dot/circle) before repainting; leave
+    // any king-escape markers intact (they share the same select trigger
+    // and were painted in the same #handleInput call if enabled).
+    this.cb.removeMarkers(MARKER_TYPE.dot);
+    this.cb.removeMarkers(MARKER_TYPE.circle);
     for (const m of moves) {
       if (m.isCapture) {
         this.cb.addMarker(MARKER_TYPE.circle, m.to);
@@ -118,8 +145,17 @@ export class Board {
     }
   }
 
-  #clearLegalMarkers() {
+  #paintKingMarkers({ escapes, covered }) {
+    this.cb.removeMarkers(MARKER_KING_ESCAPE);
+    this.cb.removeMarkers(MARKER_KING_COVERED);
+    for (const sq of escapes)  this.cb.addMarker(MARKER_KING_ESCAPE,  sq);
+    for (const sq of covered)  this.cb.addMarker(MARKER_KING_COVERED, sq);
+  }
+
+  #clearAidMarkers() {
     this.cb.removeMarkers(MARKER_TYPE.dot);
     this.cb.removeMarkers(MARKER_TYPE.circle);
+    this.cb.removeMarkers(MARKER_KING_ESCAPE);
+    this.cb.removeMarkers(MARKER_KING_COVERED);
   }
 }
