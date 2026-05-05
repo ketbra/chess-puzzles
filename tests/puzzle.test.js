@@ -336,3 +336,116 @@ describe('legalMovesFrom', () => {
     expect(a2?.isCapture).toBe(false);
   });
 });
+
+describe('opponentKingSurround', () => {
+  it('returns empty before applyOpponentSetup (status awaiting-setup)', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    expect(s.opponentKingSurround()).toEqual({ escapes: [], covered: [] });
+  });
+
+  it('returns empty after solve (status solved)', () => {
+    const s = new PuzzleSession(matein1Backrank);
+    s.applyOpponentSetup();
+    s.attemptUserMove({ from: 'a1', to: 'a8' });
+    expect(s.opponentKingSurround()).toEqual({ escapes: [], covered: [] });
+  });
+
+  it('clips to on-board neighbors when king is in the corner', () => {
+    // Goal: test that the BLACK king (h8, alone in corner) has only 3
+    // on-board neighbors (g7, h7, g8) and they all classify as escapes.
+    // For opponentKingSurround to target the BLACK king, the user must be
+    // WHITE (chess.turn()==='w' post-setup), which requires FEN side-to-move
+    // = 'b' so the opponent (black) moves first. Black needs a legal move
+    // that doesn't disturb h8's neighborhood — use a black pawn far away.
+    const corner = {
+      id: 'TEST_CORNER',
+      fen: '7k/p7/8/8/8/8/8/4K3 b - - 0 1',
+      moves: ['a7a6', 'e1e2'], // black pawn moves; placeholder white move (not played)
+      rating: 0,
+      themes: ['mateIn1'],
+      stars: 1,
+    };
+    const s = new PuzzleSession(corner);
+    s.applyOpponentSetup(); // black plays a7a6 — now white to move (user)
+    const r = s.opponentKingSurround();
+    expect(new Set(r.escapes)).toEqual(new Set(['g7', 'h7', 'g8']));
+    expect(r.covered).toEqual([]);
+  });
+
+  it('reports all 5 on-back-rank neighbors as covered when blocked by own pieces', () => {
+    // Goal: BLACK king e8 surrounded by black own pieces on all 5 on-board
+    // neighbors. Use rooks on d8/f8 (pawns are illegal on rank 8 for black)
+    // and pawns on d7/e7/f7. Add a black knight on a8 so black has a legal
+    // setup move (a8→b6) that doesn't disturb the surround. FEN side-to-move
+    // = 'b' so the user is white post-setup.
+    const blocked = {
+      id: 'TEST_BLOCKED',
+      fen: 'n2rkr2/3ppp2/8/8/8/8/8/4K3 b - - 0 1',
+      moves: ['a8b6', 'e1e2'], // black knight moves; placeholder white move (not played)
+      rating: 0,
+      themes: ['mateIn1'],
+      stars: 1,
+    };
+    const s = new PuzzleSession(blocked);
+    s.applyOpponentSetup(); // black plays a8b6 — now white to move (user)
+    const r = s.opponentKingSurround();
+    expect(r.escapes).toEqual([]);
+    expect(new Set(r.covered)).toEqual(new Set(['d7', 'e7', 'f7', 'd8', 'f8']));
+  });
+
+  it('mixes escapes and covered when some neighbors are attacked', () => {
+    // Goal: BLACK king e8 with white rook on a7 attacking the 7th rank.
+    // Adjacent: d7/e7/f7 attacked → covered; d8/f8 unattacked → escapes.
+    // Add a black pawn on h7 so black has a legal setup move (h7h5) that
+    // doesn't disturb e8's neighborhood. FEN side-to-move = 'b'.
+    const mixed = {
+      id: 'TEST_MIXED',
+      fen: '4k3/R6p/8/8/8/8/8/4K3 b - - 0 1',
+      moves: ['h7h5', 'e1e2'], // black pawn moves; placeholder white move (not played)
+      rating: 0,
+      themes: ['mateIn1'],
+      stars: 1,
+    };
+    const s = new PuzzleSession(mixed);
+    s.applyOpponentSetup(); // black plays h7h5 — now white to move (user)
+    const r = s.opponentKingSurround();
+    expect(new Set(r.covered)).toEqual(new Set(['d7', 'e7', 'f7']));
+    expect(new Set(r.escapes)).toEqual(new Set(['d8', 'f8']));
+  });
+
+  it('treats selectedSquare as vacated: removing the only attacker reclassifies covered → escape', () => {
+    // Construct a position where WHITE (the user) is to move with a queen as
+    // the SOLE attacker of squares around the black king. To get white-to-move
+    // post-setup, FEN side-to-move = 'b' so the opponent (black) moves first.
+    // Black king on e8 → king moves to e7 (legal: e7 not attacked from d5).
+    // After setup: white to move, black king now on e7.
+    //
+    // Black king e7 neighbors: d6, e6, f6, d7, f7, d8, e8, f8.
+    // White queen on d5 attacks: d-file (d6, d7, d8), 5th rank, and diagonals
+    // (c4,b3,a2 / e4,f3,g2,h1 / c6,b7,a8 / e6,f7,g8). So adjacent attacked:
+    // d6, e6, d7, f7, d8 → covered.  f6, e8, f8 → escapes.
+    //
+    // With selectedSquare='d5' (queen vacates): only the white king remains
+    // (on e1) — too far to attack any e7 neighbor. So all 8 become escapes.
+    const queenOnly = {
+      id: 'TEST_QUEEN_VACATE',
+      fen: '4k3/8/8/3Q4/8/8/8/4K3 b - - 0 1',
+      moves: ['e8e7', 'd5d6'], // black king e8→e7; placeholder white move (not played)
+      rating: 0,
+      themes: ['mateIn1'],
+      stars: 1,
+    };
+    const s = new PuzzleSession(queenOnly);
+    s.applyOpponentSetup(); // black plays e8e7; now white to move (user).
+
+    const noVacate = s.opponentKingSurround();
+    expect(new Set(noVacate.covered)).toEqual(new Set(['d6', 'e6', 'd7', 'f7', 'd8']));
+    expect(new Set(noVacate.escapes)).toEqual(new Set(['f6', 'e8', 'f8']));
+
+    const withVacate = s.opponentKingSurround('d5');
+    expect(new Set(withVacate.escapes)).toEqual(
+      new Set(['d6', 'e6', 'f6', 'd7', 'f7', 'd8', 'e8', 'f8']),
+    );
+    expect(withVacate.covered).toEqual([]);
+  });
+});

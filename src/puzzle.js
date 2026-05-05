@@ -156,4 +156,68 @@ export class PuzzleSession {
       isCapture: m.flags.includes('c') || m.flags.includes('e'),
     }));
   }
+
+  opponentKingSurround(selectedSquare = null) {
+    if (this.status !== 'awaiting-user') return { escapes: [], covered: [] };
+    const userColor = this.chess.turn();
+    const oppColor = userColor === 'w' ? 'b' : 'w';
+
+    // Locate the opponent king on the live position.
+    let kingSq = null;
+    outer: for (const row of this.chess.board()) {
+      for (const cell of row) {
+        if (cell && cell.type === 'k' && cell.color === oppColor) {
+          kingSq = cell.square;
+          break outer;
+        }
+      }
+    }
+    if (!kingSq) return { escapes: [], covered: [] };
+
+    // Clone the position with side-to-move swapped to the opponent (so
+    // chess.moves() returns the opponent king's legal moves) and en-passant
+    // cleared (avoids invalid-FEN edge cases; doesn't affect king moves).
+    const parts = this.chess.fen().split(' ');
+    parts[1] = oppColor;
+    parts[3] = '-';
+    let cloned;
+    try {
+      cloned = new Chess(parts.join(' '));
+    } catch {
+      return { escapes: [], covered: [] };
+    }
+
+    // Treat the about-to-move piece as already gone, so squares it currently
+    // covers correctly classify as escapes (the kid is planning that move).
+    if (selectedSquare) {
+      cloned.remove(selectedSquare);
+    }
+
+    // King's legal moves to adjacent squares (filter out castling).
+    const escapes = new Set(
+      cloned.moves({ square: kingSq, verbose: true })
+        .filter((m) => {
+          const df = Math.abs(m.from.charCodeAt(0) - m.to.charCodeAt(0));
+          const dr = Math.abs(parseInt(m.from[1], 10) - parseInt(m.to[1], 10));
+          return df <= 1 && dr <= 1;
+        })
+        .map((m) => m.to),
+    );
+
+    // On-board adjacent squares not in escapes are "covered".
+    const file = kingSq.charCodeAt(0); // 'a' = 97
+    const rank = parseInt(kingSq[1], 10);
+    const covered = [];
+    for (let df = -1; df <= 1; df++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        if (df === 0 && dr === 0) continue;
+        const f = file + df;
+        const r = rank + dr;
+        if (f < 97 || f > 104 || r < 1 || r > 8) continue;
+        const sq = String.fromCharCode(f) + r;
+        if (!escapes.has(sq)) covered.push(sq);
+      }
+    }
+    return { escapes: [...escapes], covered };
+  }
 }
