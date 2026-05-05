@@ -539,3 +539,21 @@ body:not(.show-coords) .cm-chessboard .coordinates { display: none; }
   cursor: pointer;
   font-size: 15px;
 }
+
+/* Phase 6.2: green legal-move dots and capture rings. Theme-independent —
+   functional signal, not decoration; consistent muscle memory across themes. */
+.cm-chessboard .markers .marker.dot circle,
+.cm-chessboard .markers-layer .marker.dot circle {
+  fill: #7a9f3a;
+  fill-opacity: 0.6;
+}
+
+.cm-chessboard .markers .marker.circle circle,
+.cm-chessboard .markers-layer .marker.circle circle,
+.cm-chessboard .markers .marker.circlePrimary circle,
+.cm-chessboard .markers-layer .marker.circlePrimary circle {
+  stroke: #7a9f3a;
+  stroke-width: 4;
+  fill: none;
+  stroke-opacity: 0.7;
+}

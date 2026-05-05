@@ -52,7 +52,10 @@ async function main() {
   setStatus('Loading puzzles…');
   registerServiceWorker(); // fire-and-forget
   bindInstall();
-  board = new Board('#board', { onUserMove: handleUserMove });
+  board = new Board('#board', {
+    onUserMove: handleUserMove,
+    onLegalMoves: (square) => session?.legalMovesFrom(square) ?? [],
+  });
   bindActions();
 
   let puzzles;
@@ -110,6 +113,7 @@ async function loadNextPuzzle() {
   await wait(SETUP_DELAY_MS);
   const setup = session.applyOpponentSetup();
   await board.animateMove({ from: setup.from, to: setup.to });
+  board.setUserColor(session.turn()); // 'w' or 'b' — whoever's turn it is now
 }
 
 async function handleUserMove({ from, to, promotion }) {
