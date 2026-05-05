@@ -146,6 +146,9 @@ export class Board {
   }
 
   #paintKingMarkers({ escapes, covered }) {
+    // Mirror of #paintLegalMarkers: each paint method owns its own marker
+    // types and clears only those, leaving the other aid's markers intact
+    // when both aids are enabled in the same #handleInput call.
     this.cb.removeMarkers(MARKER_KING_ESCAPE);
     this.cb.removeMarkers(MARKER_KING_COVERED);
     for (const sq of escapes)  this.cb.addMarker(MARKER_KING_ESCAPE,  sq);
