@@ -569,3 +569,15 @@ body:not(.show-coords) .cm-chessboard .coordinates { display: none; }
   fill: #8a8a8a;
   opacity: 0.30;
 }
+
+/* Phase 6.3: section title within the settings sheet (sits between
+   setting rows). Differentiates the "Learning aids" subsection from
+   the rows above/below without requiring a full nested container. */
+.settings-section-title {
+  margin: 12px 4px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}

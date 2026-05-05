@@ -1,10 +1,10 @@
 // src/ui/settings.js
-// Binds the gear icon, settings sheet, scrim, and the four controls
-// (sound toggle, theme segmented, coords toggle, reset stats button).
+// Binds the gear icon, settings sheet, scrim, and all controls
+// (sound toggle, theme segmented, coords toggle, aid toggles, reset stats).
 
 import { bindProfileSection } from './profile.js';
 
-export function bindSettings({ settings, profiles, onResetStats }) {
+export function bindSettings({ settings, profiles, board, onResetStats }) {
   bindProfileSection({ profiles });
   const gear = document.querySelector('#gear-btn');
   const sheet = document.querySelector('#settings-sheet');
@@ -14,6 +14,8 @@ export function bindSettings({ settings, profiles, onResetStats }) {
   const themeWarm = document.querySelector('#setting-theme-warm');
   const themeCool = document.querySelector('#setting-theme-cool');
   const coordsToggle = document.querySelector('#setting-coords');
+  const aidLegalToggle = document.querySelector('#setting-aid-legal');
+  const aidKingToggle = document.querySelector('#setting-aid-king');
   const resetBtn = document.querySelector('#setting-reset-stats');
 
   syncControls(settings);
@@ -38,6 +40,14 @@ export function bindSettings({ settings, profiles, onResetStats }) {
   coordsToggle.addEventListener('change', async () => {
     await settings.setShowCoords(coordsToggle.checked);
     settings.apply();
+  });
+  aidLegalToggle.addEventListener('change', async () => {
+    await settings.setAidLegalMoves(aidLegalToggle.checked);
+    if (board) board.setShowLegalMoves(aidLegalToggle.checked);
+  });
+  aidKingToggle.addEventListener('change', async () => {
+    await settings.setAidKingEscape(aidKingToggle.checked);
+    if (board) board.setShowKingEscape(aidKingToggle.checked);
   });
 
   // Reset stats: in-place two-stage confirm with 3s disarm timeout.
@@ -66,6 +76,8 @@ export function bindSettings({ settings, profiles, onResetStats }) {
   function syncControls(s) {
     soundToggle.checked = s.soundOn;
     coordsToggle.checked = s.showCoords;
+    aidLegalToggle.checked = s.aidLegalMoves;
+    aidKingToggle.checked = s.aidKingEscape;
     themeWarm.classList.toggle('active', s.theme === 'warm');
     themeCool.classList.toggle('active', s.theme === 'cool');
   }

@@ -55,6 +55,7 @@ async function main() {
   board = new Board('#board', {
     onUserMove: handleUserMove,
     onLegalMoves: (square) => session?.legalMovesFrom(square) ?? [],
+    onKingSurround: (square) => session?.opponentKingSurround(square) ?? { escapes: [], covered: [] },
   });
   bindActions();
 
@@ -80,6 +81,8 @@ async function main() {
   filters  = await new Filters(scopedStore, puzzles).load();
   settings = await new Settings(scopedStore).load();
   settings.apply();
+  board.setShowLegalMoves(settings.aidLegalMoves);
+  board.setShowKingEscape(settings.aidKingEscape);
 
   renderStats(stats.snapshot());
   renderChips({ active: filters.theme, counts: filters.counts(), onSelect: handleThemeChange });
@@ -88,6 +91,7 @@ async function main() {
   bindSettings({
     settings,
     profiles,
+    board,
     onResetStats: async () => {
       await stats.reset();
       renderStats(stats.snapshot());
