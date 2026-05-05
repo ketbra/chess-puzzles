@@ -555,3 +555,17 @@ body:not(.show-coords) .cm-chessboard .coordinates { display: none; }
   stroke-width: 3px;
   opacity: 0.7;
 }
+
+/* Phase 6.3: king-escape aid. Translucent fills so the green legal-move
+   dots layer cleanly on top when both aids are on simultaneously.
+   Color taxonomy: red = danger (escape route still open),
+   gray = neutral (covered by attack or own-piece block). */
+.cm-chessboard .markers .marker.marker-king-escape {
+  fill: #c25555;
+  opacity: 0.45;
+}
+
+.cm-chessboard .markers .marker.marker-king-covered {
+  fill: #8a8a8a;
+  opacity: 0.30;
+}
