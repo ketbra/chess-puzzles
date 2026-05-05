@@ -448,4 +448,25 @@ describe('opponentKingSurround', () => {
     );
     expect(withVacate.covered).toEqual([]);
   });
+
+  it('targets the white king when user is black (side-to-move sanity)', () => {
+    // Mirror of the corner test, but for the WHITE king. To get the user
+    // playing black post-setup, FEN side-to-move = 'w' so white moves first.
+    // Provide a white pawn so white has a non-king move that doesn't disturb
+    // the white king's neighborhood (g1/h2/g2).
+    const whiteCorner = {
+      id: 'TEST_CORNER_WHITE',
+      fen: '4k3/8/8/8/8/8/P7/7K w - - 0 1',
+      moves: ['a2a3', 'e8e7'], // white pawn moves; placeholder black move (not played)
+      rating: 0,
+      themes: ['mateIn1'],
+      stars: 1,
+    };
+    const s = new PuzzleSession(whiteCorner);
+    s.applyOpponentSetup(); // white plays a2a3 — now black to move (user)
+    const r = s.opponentKingSurround();
+    // White king h1 has 3 on-board neighbors: g1, h2, g2. None attacked, none blocked.
+    expect(new Set(r.escapes)).toEqual(new Set(['g1', 'h2', 'g2']));
+    expect(r.covered).toEqual([]);
+  });
 });
