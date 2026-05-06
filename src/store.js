@@ -16,7 +16,7 @@ const DB_VERSION = 2;
 
 const PER_PROFILE_KEYS = [
   'solved', 'streak', 'bestStreak', 'todayCount', 'todayDate',
-  'filterTheme', 'filterMaxStars',
+  'filterTheme', 'filterMinStars', 'filterMaxStars',
   'soundOn', 'theme', 'showCoords',
   'aidLegalMoves', 'aidKingEscape',
 ];

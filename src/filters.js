@@ -1,4 +1,4 @@
-// Owns the current filter state (theme + max-stars cap), builds the active
+// Owns the current filter state (theme + star-range), builds the active
 // puzzle pool from the union, persists state to IDB meta, and provides
 // next() with shuffle-and-cycle ordering.
 
@@ -9,6 +9,7 @@ export class Filters {
     this.store = store;
     this.allPuzzles = allPuzzles;
     this.theme = 'all';
+    this.minStars = 1;
     this.maxStars = 2;
     this.pool = [];
     this.poolIndex = 0;
@@ -16,6 +17,9 @@ export class Filters {
 
   async load() {
     this.theme    = (await this.store.getMeta('filterTheme'))    ?? 'all';
+    // Pre-range existing users persisted only filterMaxStars; default
+    // filterMinStars to 1 so their pool is preserved exactly.
+    this.minStars = (await this.store.getMeta('filterMinStars')) ?? 1;
     this.maxStars = (await this.store.getMeta('filterMaxStars')) ?? 2;
     this.rebuildPool();
     return this;
@@ -25,7 +29,7 @@ export class Filters {
     let pool = this.theme === 'all'
       ? this.allPuzzles
       : this.allPuzzles.filter((p) => p.themes.includes(this.theme));
-    pool = pool.filter((p) => p.stars <= this.maxStars);
+    pool = pool.filter((p) => p.stars >= this.minStars && p.stars <= this.maxStars);
     this.pool = shuffle(pool);
     this.poolIndex = 0;
   }
@@ -36,7 +40,9 @@ export class Filters {
       const themed = id === 'all'
         ? this.allPuzzles
         : this.allPuzzles.filter((p) => p.themes.includes(id));
-      out[id] = themed.filter((p) => p.stars <= this.maxStars).length;
+      out[id] = themed.filter(
+        (p) => p.stars >= this.minStars && p.stars <= this.maxStars,
+      ).length;
     }
     return out;
   }
@@ -47,8 +53,9 @@ export class Filters {
     await this.persist();
   }
 
-  async setMaxStars(n) {
-    this.maxStars = n;
+  async setStarRange(min, max) {
+    this.minStars = min;
+    this.maxStars = max;
     this.rebuildPool();
     await this.persist();
   }
@@ -65,6 +72,7 @@ export class Filters {
   async persist() {
     await Promise.all([
       this.store.setMeta('filterTheme',    this.theme),
+      this.store.setMeta('filterMinStars', this.minStars),
       this.store.setMeta('filterMaxStars', this.maxStars),
     ]);
   }

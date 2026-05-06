@@ -86,7 +86,10 @@ async function main() {
 
   renderStats(stats.snapshot());
   renderChips({ active: filters.theme, counts: filters.counts(), onSelect: handleThemeChange });
-  renderStars({ cap: filters.maxStars, onSelect: handleStarChange });
+  renderStars({
+    range: { min: filters.minStars, max: filters.maxStars },
+    onChange: handleStarRangeChange,
+  });
 
   bindSettings({
     settings,
@@ -182,9 +185,12 @@ async function handleThemeChange(theme) {
   await loadNextPuzzle();
 }
 
-async function handleStarChange(n) {
-  await filters.setMaxStars(n);
-  renderStars({ cap: filters.maxStars, onSelect: handleStarChange });
+async function handleStarRangeChange({ min, max }) {
+  if (min === filters.minStars && max === filters.maxStars) return;
+  await filters.setStarRange(min, max);
+  // Stars UI already rendered the new state during drag; only re-render the
+  // theme chips (their counts depend on the active range) and load the next
+  // puzzle from the new pool.
   renderChips({ active: filters.theme, counts: filters.counts(), onSelect: handleThemeChange });
   await loadNextPuzzle();
 }

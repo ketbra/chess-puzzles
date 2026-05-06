@@ -24,31 +24,48 @@ beforeEach(() => {
 });
 
 describe('Filters', () => {
-  it('default theme=all, maxStars=2', async () => {
+  it('default theme=all, range=[1, 2]', async () => {
     const store = await new Store().open();
     const filters = await new Filters(store, POOL).load();
     expect(filters.theme).toBe('all');
+    expect(filters.minStars).toBe(1);
     expect(filters.maxStars).toBe(2);
     await store.close();
   });
 
-  it('rebuildPool: theme=all + maxStars=2 filters by stars only', async () => {
+  it('rebuildPool: theme=all + range=[1,2] filters by star range', async () => {
     const store = await new Store().open();
     const filters = await new Filters(store, POOL).load();
     expect(filters.pool.map((p) => p.id).sort()).toEqual(['A','C','D','E','G']);
     await store.close();
   });
 
-  it('rebuildPool: theme=mateIn1 + maxStars=5 returns only mateIn1', async () => {
+  it('rebuildPool: range can exclude low stars (lower bound matters)', async () => {
     const store = await new Store().open();
     const filters = await new Filters(store, POOL).load();
-    await filters.setMaxStars(5);
+    await filters.setStarRange(2, 3);
+    expect(filters.pool.map((p) => p.id).sort()).toEqual(['B','C','E','G']);
+    await store.close();
+  });
+
+  it('rebuildPool: exact-match a single star (range=[N,N])', async () => {
+    const store = await new Store().open();
+    const filters = await new Filters(store, POOL).load();
+    await filters.setStarRange(3, 3);
+    expect(filters.pool.map((p) => p.id).sort()).toEqual(['B']);
+    await store.close();
+  });
+
+  it('rebuildPool: range=[1,5] + theme=mateIn1 returns only mateIn1', async () => {
+    const store = await new Store().open();
+    const filters = await new Filters(store, POOL).load();
+    await filters.setStarRange(1, 5);
     await filters.setTheme('mateIn1');
     expect(filters.pool.map((p) => p.id).sort()).toEqual(['A','B','E']);
     await store.close();
   });
 
-  it('counts: per-theme counts under current maxStars cap', async () => {
+  it('counts: per-theme counts under current range', async () => {
     const store = await new Store().open();
     const filters = await new Filters(store, POOL).load();
     const c = filters.counts();
@@ -58,6 +75,17 @@ describe('Filters', () => {
     expect(c.fork).toBe(2);
     expect(c.pin).toBe(0);
     expect(c.hangingPiece).toBe(1);
+    await store.close();
+  });
+
+  it('counts: respect lower bound', async () => {
+    const store = await new Store().open();
+    const filters = await new Filters(store, POOL).load();
+    await filters.setStarRange(3, 5);
+    const c = filters.counts();
+    expect(c.all).toBe(2);          // B (3-star) + F (4-star)
+    expect(c.mateIn1).toBe(1);      // B
+    expect(c.pin).toBe(1);          // F
     await store.close();
   });
 
@@ -81,23 +109,35 @@ describe('Filters', () => {
     const store = await new Store().open();
     const filters = await new Filters(store, POOL).load();
     await filters.setTheme('pin');
-    await filters.setMaxStars(1);
+    await filters.setStarRange(1, 1);   // pin puzzle is 4-star → no match
     expect(filters.pool.length).toBe(0);
     expect(filters.next()).toBeNull();
     await store.close();
   });
 
-  it('persistence: theme + maxStars round-trip through Store', async () => {
+  it('persistence: theme + range round-trip through Store', async () => {
     const store = await new Store().open();
     const f1 = await new Filters(store, POOL).load();
     await f1.setTheme('fork');
-    await f1.setMaxStars(3);
+    await f1.setStarRange(2, 4);
     await store.close();
 
     const store2 = await new Store().open();
     const f2 = await new Filters(store2, POOL).load();
     expect(f2.theme).toBe('fork');
-    expect(f2.maxStars).toBe(3);
+    expect(f2.minStars).toBe(2);
+    expect(f2.maxStars).toBe(4);
     await store2.close();
+  });
+
+  it('migration: existing filterMaxStars without filterMinStars defaults min to 1', async () => {
+    const store = await new Store().open();
+    // Simulate pre-update state: only filterMaxStars set.
+    await store.setMeta('filterMaxStars', 3);
+
+    const filters = await new Filters(store, POOL).load();
+    expect(filters.minStars).toBe(1);
+    expect(filters.maxStars).toBe(3);
+    await store.close();
   });
 });

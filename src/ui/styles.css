@@ -175,6 +175,8 @@ main {
   display: flex;
   gap: 4px;
   justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .star {
@@ -186,6 +188,8 @@ main {
   min-width: 44px;
   min-height: 44px;
   color: #5a3a22;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .star-on  { color: #f0d9b5; }
