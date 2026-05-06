@@ -158,7 +158,7 @@ export class PuzzleSession {
   }
 
   opponentKingSurround(selectedSquare = null) {
-    if (this.status !== 'awaiting-user') return { escapes: [], covered: [] };
+    if (this.status !== 'awaiting-user') return { kingSquare: null, escapes: [], covered: [] };
     const userColor = this.chess.turn();
     const oppColor = userColor === 'w' ? 'b' : 'w';
 
@@ -172,7 +172,7 @@ export class PuzzleSession {
         }
       }
     }
-    if (!kingSq) return { escapes: [], covered: [] };
+    if (!kingSq) return { kingSquare: null, escapes: [], covered: [] };
 
     // Clone the position with side-to-move swapped to the opponent (so
     // chess.moves() returns the opponent king's legal moves) and en-passant
@@ -184,7 +184,7 @@ export class PuzzleSession {
     try {
       cloned = new Chess(parts.join(' '));
     } catch {
-      return { escapes: [], covered: [] };
+      return { kingSquare: null, escapes: [], covered: [] };
     }
 
     // Treat the about-to-move piece as already gone, so squares it currently
@@ -218,6 +218,6 @@ export class PuzzleSession {
         if (!escapes.has(sq)) covered.push(sq);
       }
     }
-    return { escapes: [...escapes], covered };
+    return { kingSquare: kingSq, escapes: [...escapes], covered };
   }
 }

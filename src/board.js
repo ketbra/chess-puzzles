@@ -145,12 +145,16 @@ export class Board {
     }
   }
 
-  #paintKingMarkers({ escapes, covered }) {
+  #paintKingMarkers({ kingSquare, escapes, covered }) {
     // Mirror of #paintLegalMarkers: each paint method owns its own marker
     // types and clears only those, leaving the other aid's markers intact
     // when both aids are enabled in the same #handleInput call.
+    // The king's own square is painted red too — semantically it's a square
+    // that must be under attack for mate (in check), unifying with escapes
+    // as "squares that need attacking."
     this.cb.removeMarkers(MARKER_KING_ESCAPE);
     this.cb.removeMarkers(MARKER_KING_COVERED);
+    if (kingSquare)            this.cb.addMarker(MARKER_KING_ESCAPE,  kingSquare);
     for (const sq of escapes)  this.cb.addMarker(MARKER_KING_ESCAPE,  sq);
     for (const sq of covered)  this.cb.addMarker(MARKER_KING_COVERED, sq);
   }

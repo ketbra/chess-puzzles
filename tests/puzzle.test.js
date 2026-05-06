@@ -340,14 +340,14 @@ describe('legalMovesFrom', () => {
 describe('opponentKingSurround', () => {
   it('returns empty before applyOpponentSetup (status awaiting-setup)', () => {
     const s = new PuzzleSession(matein1Backrank);
-    expect(s.opponentKingSurround()).toEqual({ escapes: [], covered: [] });
+    expect(s.opponentKingSurround()).toEqual({ kingSquare: null, escapes: [], covered: [] });
   });
 
   it('returns empty after solve (status solved)', () => {
     const s = new PuzzleSession(matein1Backrank);
     s.applyOpponentSetup();
     s.attemptUserMove({ from: 'a1', to: 'a8' });
-    expect(s.opponentKingSurround()).toEqual({ escapes: [], covered: [] });
+    expect(s.opponentKingSurround()).toEqual({ kingSquare: null, escapes: [], covered: [] });
   });
 
   it('clips to on-board neighbors when king is in the corner', () => {
@@ -389,6 +389,7 @@ describe('opponentKingSurround', () => {
     const s = new PuzzleSession(blocked);
     s.applyOpponentSetup(); // black plays a8b6 — now white to move (user)
     const r = s.opponentKingSurround();
+    expect(r.kingSquare).toBe('e8');
     expect(r.escapes).toEqual([]);
     expect(new Set(r.covered)).toEqual(new Set(['d7', 'e7', 'f7', 'd8', 'f8']));
   });
