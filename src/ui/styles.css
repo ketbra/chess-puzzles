@@ -558,16 +558,18 @@ body:not(.show-coords) .cm-chessboard .coordinates { display: none; }
 
 /* Phase 6.3: king-escape aid. Translucent fills so the green legal-move
    dots layer cleanly on top when both aids are on simultaneously.
-   Color taxonomy: red = danger (escape route still open),
-   gray = neutral (covered by attack or own-piece block). */
+   Color taxonomy (binary green/red mental model — every square in the
+   king's 9-square zone is one or the other):
+     red   = needs attacking (escape route still open, or king's own square)
+     green = handled (covered by attack or blocked by own piece) */
 .cm-chessboard .markers .marker.marker-king-escape {
   fill: #c25555;
   opacity: 0.45;
 }
 
 .cm-chessboard .markers .marker.marker-king-covered {
-  fill: #8a8a8a;
-  opacity: 0.30;
+  fill: #7a9f3a;
+  opacity: 0.35;
 }
 
 /* Phase 6.3: section title within the settings sheet (sits between
